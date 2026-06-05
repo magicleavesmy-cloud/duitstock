@@ -101,6 +101,7 @@ function App() {
     () => buildMetrics(products, stockChecks),
     [products, stockChecks],
   )
+  const productCategories = useMemo(() => getCategories(products), [products])
   const visibleActivePage = visibleNavItems.some((item) => item.id === activePage)
     ? activePage
     : roleHomePages[currentUserRole]
@@ -244,6 +245,7 @@ function App() {
         addedQty,
         costValue,
         countedStock,
+        checkedBy: currentUserRole,
         date: checkedAt,
         note: 'Stock check',
         previousStock,
@@ -543,6 +545,7 @@ function App() {
 
       {editingProduct && (
         <ProductModal
+          categories={productCategories}
           product={editingProduct}
           onClose={() => setEditingProduct(null)}
           onSave={saveProduct}
@@ -790,19 +793,29 @@ function ProductsPage({
 }) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false)
   const categories = useMemo(() => getCategories(products), [products])
   const filteredProducts = useMemo(() => {
     const lowered = query.toLowerCase().trim()
 
-    return products.filter((item) => {
-      const matchesQuery = [item.name, item.category, item.supplier, item.sku]
-        .join(' ')
-        .toLowerCase()
-        .includes(lowered)
-      const matchesCategory = category === 'all' || item.category === category
-      return matchesQuery && matchesCategory
-    })
-  }, [category, products, query])
+    return products
+      .filter((item) => {
+        const stock = Number(item.stockQty) || 0
+        const minimumStock = Number(item.minimumStock) || 0
+        const matchesQuery = [item.name, item.category, item.supplier, item.sku]
+          .join(' ')
+          .toLowerCase()
+          .includes(lowered)
+        const matchesCategory = category === 'all' || item.category === category
+        const matchesLowStock = !showLowStockOnly || stock <= minimumStock
+        return matchesQuery && matchesCategory && matchesLowStock
+      })
+      .sort((a, b) => {
+        if (!showLowStockOnly) return a.name.localeCompare(b.name)
+        return (Number(a.stockQty) || 0) - (Number(b.stockQty) || 0)
+      })
+  }, [category, products, query, showLowStockOnly])
+  const productSummary = useMemo(() => buildProductSummary(filteredProducts), [filteredProducts])
 
   return (
     <section className="space-y-2.5">
@@ -829,12 +842,25 @@ function ProductsPage({
             </option>
           ))}
         </select>
-        {canAddProducts && (
-          <button className="primary-button" onClick={onNew} type="button">
-            Add product
-          </button>
-        )}
       </div>
+
+      <button
+        className={`secondary-button h-9 w-full sm:w-fit ${
+          showLowStockOnly ? 'bg-rose-50 text-rose-700 ring-rose-100' : ''
+        }`}
+        onClick={() => setShowLowStockOnly((current) => !current)}
+        type="button"
+      >
+        Low Stock
+      </button>
+
+      {canViewCosts && <ProductsAdminHero summary={productSummary} />}
+
+      {canAddProducts && (
+        <button className="primary-button w-full sm:w-fit" onClick={onNew} type="button">
+          Add product
+        </button>
+      )}
 
       {filteredProducts.length ? (
         <div className="space-y-1.5">
@@ -862,6 +888,19 @@ function ProductsPage({
   )
 }
 
+function ProductsAdminHero({ summary }) {
+  return (
+    <div className="rounded-[18px] bg-white p-2.5 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        <Info label="Cost Value" value={formatRM(summary.totalCostValue)} />
+        <Info label="Sale Value" value={formatRM(summary.totalSaleValue)} />
+        <Info label="Profit" value={formatRM(summary.totalProfit)} />
+        <Info label="Margin" value={formatPercent(summary.marginPercent)} />
+      </div>
+    </div>
+  )
+}
+
 function ProductCard({
   canManageProducts,
   canViewCosts,
@@ -871,10 +910,15 @@ function ProductCard({
   onStockIn,
 }) {
   const isLow = Number(product.stockQty) <= Number(product.minimumStock)
-  const profit = Number(product.sellingPrice) - Number(product.costPrice)
+  const costPrice = Number(product.costPrice) || 0
+  const sellingPrice = Number(product.sellingPrice) || 0
+  const stock = Number(product.stockQty) || 0
+  const profitPerUnit = sellingPrice - costPrice
+  const profitMargin = sellingPrice > 0 ? (profitPerUnit / sellingPrice) * 100 : 0
+  const totalProfitIfSoldOut = profitPerUnit * stock
 
   return (
-    <article className="flex items-center gap-2 rounded-[16px] bg-white px-2.5 py-2 shadow-sm shadow-zinc-200/60 ring-1 ring-zinc-200">
+    <article className="flex items-start gap-2 rounded-[16px] bg-white px-2.5 py-2 shadow-sm shadow-zinc-200/60 ring-1 ring-zinc-200">
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <h2 className="min-w-0 truncate text-[13px] font-semibold leading-tight">
@@ -889,17 +933,22 @@ function ProductCard({
           </span>
         </div>
         {canViewCosts ? (
-          <p className="mt-1 truncate text-[11px] font-medium text-zinc-500">
-            Cost {formatRM(product.costPrice)} / Sell {formatRM(product.sellingPrice)} / Profit{' '}
-            {formatRM(profit)}
-          </p>
+          <div className="mt-1 grid grid-cols-2 gap-1 text-[11px] font-medium text-zinc-600 sm:grid-cols-5">
+            <span>Cost {formatRM(costPrice)}</span>
+            <span>Sell {formatRM(sellingPrice)}</span>
+            <span>Profit / unit {formatRM(profitPerUnit)}</span>
+            <span>Margin {formatPercent(profitMargin)}</span>
+            <span className="col-span-2 sm:col-span-1">
+              Sold out {formatRM(totalProfitIfSoldOut)}
+            </span>
+          </div>
         ) : (
           <p className="mt-1 truncate text-[11px] font-medium text-zinc-500">
-            {[product.sku, product.category].filter(Boolean).join(' / ') || 'Inventory item'}
+            {[product.category, `Sell ${formatRM(sellingPrice)}`].filter(Boolean).join(' / ')}
           </p>
         )}
       </div>
-      <div className="flex shrink-0 gap-1">
+      <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
         <button
           className="primary-button h-8 rounded-xl px-2"
           onClick={() => onStockIn(product)}
@@ -933,18 +982,48 @@ function ProductCard({
 function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
   const categories = useMemo(() => getCategories(products), [products])
   const [category, setCategory] = useState('all')
+  const [query, setQuery] = useState('')
+  const [checkFilter, setCheckFilter] = useState('all')
   const [counts, setCounts] = useState({})
   const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10))
   const [isSaving, setIsSaving] = useState(false)
   const [pendingRows, setPendingRows] = useState(null)
-  const visibleProducts = products.filter(
-    (product) => category === 'all' || product.category === category,
-  )
-  const checkedCount = visibleProducts.filter(
+  const visibleProducts = useMemo(() => {
+    const lowered = query.toLowerCase().trim()
+
+    return products.filter((product) => {
+      const isChecked = counts[product.id] !== undefined
+      const matchesCategory = category === 'all' || product.category === category
+      const matchesQuery = [product.name, product.category, product.sku]
+        .join(' ')
+        .toLowerCase()
+        .includes(lowered)
+      const matchesStatus =
+        checkFilter === 'all' ||
+        (checkFilter === 'checked' && isChecked) ||
+        (checkFilter === 'unchecked' && !isChecked)
+
+      return matchesCategory && matchesQuery && matchesStatus
+    })
+  }, [category, checkFilter, counts, products, query])
+  const progressProducts = useMemo(() => {
+    const lowered = query.toLowerCase().trim()
+
+    return products.filter((product) => {
+      const matchesCategory = category === 'all' || product.category === category
+      const matchesQuery = [product.name, product.category, product.sku]
+        .join(' ')
+        .toLowerCase()
+        .includes(lowered)
+
+      return matchesCategory && matchesQuery
+    })
+  }, [category, products, query])
+  const progressCheckedCount = progressProducts.filter(
     (product) => counts[product.id] !== undefined,
   ).length
-  const progressPercent = visibleProducts.length
-    ? Math.round((checkedCount / visibleProducts.length) * 100)
+  const progressPercent = progressProducts.length
+    ? Math.round((progressCheckedCount / progressProducts.length) * 100)
     : 0
   const filteredStockChecks = stockChecks.filter((item) => item.date === filterDate)
   const historyGroups = groupStockChecksByDate(filteredStockChecks)
@@ -957,6 +1036,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
     },
     { profit: 0, sales: 0, soldQty: 0 },
   )
+  const dailyUsers = getStockCheckUsers(filteredStockChecks)
 
   function updateCount(productId, value) {
     if (Number(value) < 0) return
@@ -975,7 +1055,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
 
   async function handleSubmit(event) {
     event.preventDefault()
-    const rows = visibleProducts
+    const rows = progressProducts
       .filter((product) => counts[product.id] !== undefined)
       .map((product) => ({
       costPrice: product.costPrice,
@@ -1017,9 +1097,12 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
           <div className="flex items-center justify-between gap-4">
             <p className="text-xs font-semibold text-zinc-600">Checked products</p>
             <p className="text-xs font-bold text-zinc-950">
-              {checkedCount} / {visibleProducts.length} checked
+              {progressCheckedCount} / {progressProducts.length} checked
             </p>
           </div>
+          <p className="mt-1 text-[11px] font-bold text-zinc-600">
+            {progressPercent}% complete
+          </p>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200">
             <div
               className="h-full rounded-full bg-zinc-950 transition-all duration-300"
@@ -1029,6 +1112,16 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
         </div>
 
         <div className="mb-2.5 grid gap-1.5">
+          <label className="relative">
+            <span className="sr-only">Search stock check products</span>
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <input
+              className="field-input pl-9"
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search products"
+              value={query}
+            />
+          </label>
           <select
             className="field-input"
             onChange={(event) => setCategory(event.target.value)}
@@ -1045,6 +1138,26 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
             {category === 'all' ? 'All categories' : category} · {visibleProducts.length}{' '}
             products
           </p>
+          <div className="grid grid-cols-3 gap-1">
+            {[
+              ['all', 'Show All'],
+              ['checked', 'Checked Only'],
+              ['unchecked', 'Unchecked Only'],
+            ].map(([value, label]) => (
+              <button
+                className={`h-9 rounded-xl px-2 text-[11px] font-bold transition ${
+                  checkFilter === value
+                    ? 'bg-zinc-950 text-white shadow-sm'
+                    : 'bg-white text-zinc-600 ring-1 ring-zinc-200'
+                }`}
+                key={value}
+                onClick={() => setCheckFilter(value)}
+                type="button"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {visibleProducts.length ? (
@@ -1100,9 +1213,18 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
           />
         </div>
         <div className={`mt-2 grid gap-1.5 ${canViewProfit ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          <Info label="Sold" value={dailyTotals.soldQty} />
-          <Info label="Sales" value={formatRM(dailyTotals.sales)} />
-          {canViewProfit && <Info label="Profit" value={formatRM(dailyTotals.profit)} />}
+          {canViewProfit ? (
+            <>
+              <Info label="Sold" value={dailyTotals.soldQty} />
+              <Info label="Sales" value={formatRM(dailyTotals.sales)} />
+              <Info label="Profit" value={formatRM(dailyTotals.profit)} />
+            </>
+          ) : (
+            <>
+              <Info label="Products checked" value={filteredStockChecks.length} />
+              <Info label="User" value={dailyUsers} />
+            </>
+          )}
         </div>
         {historyGroups.length ? (
           <div className="mt-3 space-y-3">
@@ -1139,8 +1261,8 @@ function StockCheckRow({ count, onChange, onEnter, product }) {
     <article className="flex items-center justify-between gap-2 bg-white/0 px-2.5 py-1.5 transition hover:bg-white/70">
       <div className="min-w-0">
         <p className="truncate text-[13px] font-semibold leading-tight">{product.name}</p>
-        <p className="text-[11px] font-medium text-zinc-500">
-          Prev: {Number(product.stockQty) || 0}
+        <p className="text-[11px] font-semibold text-zinc-700">
+          Current Stock: {Number(product.stockQty) || 0}
         </p>
       </div>
       <label className="shrink-0">
@@ -1167,14 +1289,17 @@ function StockCheckRow({ count, onChange, onEnter, product }) {
 }
 
 function StockCheckHistoryDay({ canViewProfit, group }) {
+  const users = getStockCheckUsers(group.items)
+
   return (
     <section className="rounded-[16px] bg-zinc-50 p-2.5 ring-1 ring-zinc-100">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-sm font-bold text-zinc-950">{formatDate(group.date)}</h3>
           <p className="mt-0.5 text-[11px] font-semibold text-zinc-500">
-            Sold {group.totals.soldQty} / Sales {formatRM(group.totals.sales)}
-            {canViewProfit ? ` / Profit ${formatRM(group.totals.profit)}` : ''}
+            {canViewProfit
+              ? `Sold ${group.totals.soldQty} / Sales ${formatRM(group.totals.sales)} / Profit ${formatRM(group.totals.profit)}`
+              : `${group.items.length} products checked / ${users}`}
           </p>
         </div>
         <span className="w-fit rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-zinc-600 ring-1 ring-zinc-200">
@@ -1185,16 +1310,20 @@ function StockCheckHistoryDay({ canViewProfit, group }) {
       <div className="mt-2 divide-y divide-zinc-200/70">
         {group.items.map((item) => (
           <div
-            className="grid grid-cols-[1fr_auto_auto] items-center gap-2 py-1.5 text-[12px]"
+            className={`grid ${
+              canViewProfit ? 'grid-cols-[1fr_auto_auto]' : 'grid-cols-[1fr_auto]'
+            } items-center gap-2 py-1.5 text-[12px]`}
             key={item.id}
           >
             <p className="truncate font-semibold text-zinc-900">{item.productName}</p>
             <p className="shrink-0 font-medium text-zinc-500">
               {item.previousStock} {'->'} {item.countedStock}
             </p>
-            <p className="shrink-0 text-right font-bold text-zinc-800">
-              {item.soldQty || 0} sold
-            </p>
+            {canViewProfit && (
+              <p className="shrink-0 text-right font-bold text-zinc-800">
+                {item.soldQty || 0} sold
+              </p>
+            )}
           </div>
         ))}
       </div>
@@ -1515,10 +1644,8 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
   const [additionalCosts, setAdditionalCosts] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const searchTerm = search.trim().toLowerCase()
-  const selectedIds = new Set(rows.map((row) => row.productId))
   const suggestions = searchTerm
     ? products
-        .filter((product) => !selectedIds.has(product.id))
         .filter((product) =>
           [product.name, product.category, product.sku]
             .join(' ')
@@ -1549,6 +1676,7 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
         productName: product.name,
         purchaseCost: getAutofillCost(product),
         quantityAdded: '',
+        rowId: createId(),
         sku: product.sku,
         stockQty: Number(product.stockQty) || 0,
       },
@@ -1556,15 +1684,15 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
     setSearch('')
   }
 
-  function updateRow(productId, field, value) {
+  function updateRow(rowId, field, value) {
     setRows((current) =>
-      current.map((row) => (row.productId === productId ? { ...row, [field]: value } : row)),
+      current.map((row) => (row.rowId === rowId ? { ...row, [field]: value } : row)),
     )
   }
 
-  function removeRow(productId) {
+  function removeRow(rowId) {
     if (!canDeleteRows) return
-    setRows((current) => current.filter((row) => row.productId !== productId))
+    setRows((current) => current.filter((row) => row.rowId !== rowId))
   }
 
   function handleAutofillCost() {
@@ -1641,7 +1769,7 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
               return (
                 <div
                   className={`grid ${tableGridClass} items-center gap-0.5 px-1 py-1.5 text-[10px] sm:gap-1 sm:px-2 sm:py-1.5 sm:text-xs`}
-                  key={row.productId}
+                  key={row.rowId}
                 >
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-zinc-950">{row.productName}</p>
@@ -1654,7 +1782,7 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
                     className="h-8 rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] font-bold outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 sm:px-2 sm:text-xs"
                     min="1"
                     onChange={(event) =>
-                      updateRow(row.productId, 'quantityAdded', event.target.value)
+                      updateRow(row.rowId, 'quantityAdded', event.target.value)
                     }
                     required
                     type="number"
@@ -1664,7 +1792,7 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
                     className="h-8 rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] font-semibold outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 sm:px-2 sm:text-xs"
                     min="0"
                     onChange={(event) =>
-                      updateRow(row.productId, 'purchaseCost', event.target.value)
+                      updateRow(row.rowId, 'purchaseCost', event.target.value)
                     }
                     step="0.01"
                     type="number"
@@ -1677,7 +1805,7 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
                     <button
                       aria-label={`Delete ${row.productName}`}
                       className="grid h-8 w-6 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 sm:w-8"
-                      onClick={() => removeRow(row.productId)}
+                      onClick={() => removeRow(row.rowId)}
                       type="button"
                     >
                       <TrashIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1907,11 +2035,23 @@ function StockInModal({ product, onClose, onSave }) {
   )
 }
 
-function ProductModal({ product, onClose, onSave }) {
+function ProductModal({ categories, product, onClose, onSave }) {
   const [form, setForm] = useState(product)
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function handleCategoryChange(value) {
+    if (value === '__new__') {
+      setIsAddingCategory(true)
+      updateField('category', '')
+      return
+    }
+
+    setIsAddingCategory(false)
+    updateField('category', value)
   }
 
   function handleSubmit(event) {
@@ -1922,13 +2062,13 @@ function ProductModal({ product, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/30 px-3 pb-3 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6">
       <form
-        className="max-h-[92vh] w-full overflow-y-auto rounded-[30px] bg-white p-5 shadow-2xl shadow-zinc-950/20 sm:max-w-2xl"
+        className="max-h-[92vh] w-full overflow-y-auto rounded-[26px] bg-white p-4 shadow-2xl shadow-zinc-950/20 sm:max-w-md"
         onSubmit={handleSubmit}
       >
-        <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="mb-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-zinc-500">Product</p>
-            <h2 className="text-2xl font-semibold">
+            <p className="text-xs font-semibold text-zinc-500">Product</p>
+            <h2 className="text-xl font-semibold tracking-tight">
               {product.id ? 'Edit product' : 'Add product'}
             </h2>
           </div>
@@ -1942,7 +2082,7 @@ function ProductModal({ product, onClose, onSave }) {
           </button>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3">
           <Field label="Product Name">
             <input
               className="field-input"
@@ -1952,13 +2092,34 @@ function ProductModal({ product, onClose, onSave }) {
             />
           </Field>
           <Field label="Category">
-            <input
+            <select
               className="field-input"
-              onChange={(event) => updateField('category', event.target.value)}
+              onChange={(event) => handleCategoryChange(event.target.value)}
               required
-              value={form.category}
-            />
+              value={isAddingCategory ? '__new__' : form.category}
+            >
+              <option value="" disabled>
+                Select category
+              </option>
+              <option value="__new__">+ Add New Category</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
           </Field>
+          {isAddingCategory && (
+            <Field label="New Category Name">
+              <input
+                className="field-input"
+                onChange={(event) => updateField('category', event.target.value)}
+                placeholder="New Category Name"
+                required
+                value={form.category}
+              />
+            </Field>
+          )}
           <Field label="Cost Price">
             <input
               className="field-input"
@@ -1991,38 +2152,13 @@ function ProductModal({ product, onClose, onSave }) {
               value={form.stockQty}
             />
           </Field>
-          <Field label="Minimum Stock">
-            <input
-              className="field-input"
-              min="0"
-              onChange={(event) => updateField('minimumStock', event.target.value)}
-              required
-              type="number"
-              value={form.minimumStock}
-            />
-          </Field>
-          <Field label="Supplier">
-            <input
-              className="field-input"
-              onChange={(event) => updateField('supplier', event.target.value)}
-              required
-              value={form.supplier}
-            />
-          </Field>
-          <Field label="SKU optional">
-            <input
-              className="field-input"
-              onChange={(event) => updateField('sku', event.target.value)}
-              value={form.sku}
-            />
-          </Field>
         </div>
 
-        <div className="mt-5 flex gap-3">
-          <button className="secondary-button flex-1" onClick={onClose} type="button">
+        <div className="mt-4 flex gap-2">
+          <button className="secondary-button h-11 flex-1" onClick={onClose} type="button">
             Cancel
           </button>
-          <button className="primary-button flex-1" type="submit">
+          <button className="primary-button h-11 flex-1" type="submit">
             Save
           </button>
         </div>
@@ -2030,7 +2166,6 @@ function ProductModal({ product, onClose, onSave }) {
     </div>
   )
 }
-
 function BottomNav({ activePage, items, onChange }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 px-2.5 pb-[calc(env(safe-area-inset-bottom)+0.4rem)]">
@@ -2421,6 +2556,15 @@ function groupStockChecksByDate(stockChecks) {
   return [...groups.values()].sort((a, b) => b.date.localeCompare(a.date))
 }
 
+function getStockCheckUsers(stockChecks) {
+  const users = [
+    ...new Set(stockChecks.map((item) => item.checkedBy || item.userRole).filter(Boolean)),
+  ]
+
+  if (!users.length) return 'Unknown'
+  return users.map((user) => user.charAt(0).toUpperCase() + user.slice(1)).join(', ')
+}
+
 function buildReport(stockChecks, startDate, endDate) {
   const today = new Date().toISOString().slice(0, 10)
   const weekStart = getDateOffset(today, -6)
@@ -2484,6 +2628,28 @@ function isDateBetween(date, startDate, endDate) {
   return date >= startDate && date <= endDate
 }
 
+function buildProductSummary(products) {
+  const summary = products.reduce(
+    (summary, product) => {
+      const cost = Number(product.costPrice) || 0
+      const selling = Number(product.sellingPrice) || 0
+      const stock = Number(product.stockQty) || 0
+
+      summary.totalCostValue += cost * stock
+      summary.totalSaleValue += selling * stock
+      return summary
+    },
+    {
+      totalCostValue: 0,
+      totalSaleValue: 0,
+    },
+  )
+  summary.totalProfit = summary.totalSaleValue - summary.totalCostValue
+  summary.marginPercent =
+    summary.totalSaleValue > 0 ? (summary.totalProfit / summary.totalSaleValue) * 100 : 0
+  return summary
+}
+
 function getDateOffset(date, offsetDays) {
   const nextDate = new Date(`${date}T00:00:00`)
   nextDate.setDate(nextDate.getDate() + offsetDays)
@@ -2541,14 +2707,14 @@ function buildMetrics(products, movements = []) {
 function normalizeProduct(product) {
   return {
     ...product,
-    name: product.name.trim(),
-    category: product.category.trim(),
+    name: (product.name || '').trim(),
+    category: (product.category || '').trim(),
     costPrice: Number(product.costPrice) || 0,
     sellingPrice: Number(product.sellingPrice) || 0,
     stockQty: Number(product.stockQty) || 0,
     minimumStock: Number(product.minimumStock) || 0,
-    supplier: product.supplier.trim(),
-    sku: product.sku.trim(),
+    supplier: (product.supplier || '').trim(),
+    sku: (product.sku || '').trim(),
   }
 }
 
@@ -2582,6 +2748,13 @@ function formatCompactRM(value) {
   return `RM${new Intl.NumberFormat('en-MY', {
     maximumFractionDigits: 0,
   }).format(number)}`
+}
+
+function formatPercent(value) {
+  return `${new Intl.NumberFormat('en-MY', {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  }).format(Number(value) || 0)}%`
 }
 
 function formatDate(value) {
