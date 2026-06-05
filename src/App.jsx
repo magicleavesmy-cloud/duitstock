@@ -526,7 +526,7 @@ function App() {
                 />
               )}
               {isAdmin && visibleActivePage === 'reports' && (
-                <ReportsPage stockChecks={stockChecks} />
+                <ReportsPage products={products} stockChecks={stockChecks} />
               )}
               {isAdmin && visibleActivePage === 'settings' && (
                 <SettingsPage
@@ -1331,8 +1331,9 @@ function StockCheckHistoryDay({ canViewProfit, group }) {
   )
 }
 
-function ReportsPage({ stockChecks }) {
+function ReportsPage({ products, stockChecks }) {
   const today = new Date().toISOString().slice(0, 10)
+  const [deadStockDays, setDeadStockDays] = useState(30)
   const [dateRange, setDateRange] = useState({
     end: today,
     start: getDateOffset(today, -6),
@@ -1340,6 +1341,10 @@ function ReportsPage({ stockChecks }) {
   const report = useMemo(
     () => buildReport(stockChecks, dateRange.start, dateRange.end),
     [dateRange.end, dateRange.start, stockChecks],
+  )
+  const deadStockItems = useMemo(
+    () => buildDeadStockReport(products, stockChecks, deadStockDays),
+    [deadStockDays, products, stockChecks],
   )
 
   return (
@@ -1442,7 +1447,76 @@ function ReportsPage({ stockChecks }) {
           title="Most profitable products"
         />
       </div>
+
+      <DeadStockPanel
+        days={deadStockDays}
+        items={deadStockItems}
+        onDaysChange={setDeadStockDays}
+      />
     </section>
+  )
+}
+
+function DeadStockPanel({ days, items, onDaysChange }) {
+  return (
+    <div className="rounded-[20px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold">Dead Stock Alert</h2>
+          <p className="mt-0.5 text-xs text-zinc-500">
+            Products with stock but no sale movement for the selected period.
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1">
+          {[30, 60, 90].map((option) => (
+            <button
+              className={`h-8 rounded-lg px-2 text-xs font-bold ${
+                days === option ? 'bg-zinc-950 text-white shadow-sm' : 'text-zinc-600'
+              }`}
+              key={option}
+              onClick={() => onDaysChange(option)}
+              type="button"
+            >
+              {option} days
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {items.length ? (
+        <div className="mt-3 space-y-1.5">
+          {items.map((item) => (
+            <article
+              className="rounded-[16px] bg-zinc-50 p-2.5 ring-1 ring-zinc-100"
+              key={item.productId}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-zinc-950">{item.productName}</p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-zinc-500">
+                    {item.category || 'Uncategorised'} / Stock: {item.currentStock}
+                  </p>
+                </div>
+                <p className="shrink-0 text-right text-sm font-bold text-zinc-950">
+                  {formatRM(item.potentialValueLocked)}
+                </p>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                <Info label="Sale value" value={formatRM(item.saleValue)} />
+                <Info label="Last sold" value={item.lastSoldLabel} />
+                <Info label="No sale" value={item.daysWithoutSaleLabel} />
+                <Info label="Value locked" value={formatRM(item.potentialValueLocked)} />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="No dead stock found"
+          text="Products with recent sale movement will stay out of this alert."
+        />
+      )}
+    </div>
   )
 }
 
@@ -2125,7 +2199,6 @@ function ProductModal({ categories, product, onClose, onSave }) {
               className="field-input"
               min="0"
               onChange={(event) => updateField('costPrice', event.target.value)}
-              required
               step="0.01"
               type="number"
               value={form.costPrice}
@@ -2136,7 +2209,6 @@ function ProductModal({ categories, product, onClose, onSave }) {
               className="field-input"
               min="0"
               onChange={(event) => updateField('sellingPrice', event.target.value)}
-              required
               step="0.01"
               type="number"
               value={form.sellingPrice}
@@ -2147,7 +2219,6 @@ function ProductModal({ categories, product, onClose, onSave }) {
               className="field-input"
               min="0"
               onChange={(event) => updateField('stockQty', event.target.value)}
-              required
               type="number"
               value={form.stockQty}
             />
@@ -2585,6 +2656,53 @@ function buildReport(stockChecks, startDate, endDate) {
       stockChecks.filter((item) => isDateBetween(item.date, weekStart, today)),
     ),
   }
+}
+
+function buildDeadStockReport(products, stockChecks, deadStockDays) {
+  const today = new Date()
+  const lastSoldByProduct = new Map()
+
+  stockChecks.forEach((item) => {
+    const soldQty =
+      Number(item.soldQty) ||
+      Math.max(0, (Number(item.previousStock) || 0) - (Number(item.countedStock) || 0))
+    if (soldQty <= 0 || !item.productId) return
+
+    const soldAt = getRecordDateValue(item)
+    if (!soldAt) return
+
+    const current = lastSoldByProduct.get(item.productId)
+    if (!current || soldAt > current) {
+      lastSoldByProduct.set(item.productId, soldAt)
+    }
+  })
+
+  return products
+    .map((product) => {
+      const currentStock = Number(product.stockQty) || 0
+      const sellingPrice = Number(product.sellingPrice) || 0
+      const lastSoldDate = lastSoldByProduct.get(product.id)
+      const daysWithoutSale = lastSoldDate
+        ? Math.max(0, Math.floor((today - new Date(`${lastSoldDate}T00:00:00`)) / 86400000))
+        : deadStockDays
+      const potentialValueLocked = currentStock * sellingPrice
+
+      return {
+        category: product.category,
+        currentStock,
+        daysWithoutSale,
+        daysWithoutSaleLabel: lastSoldDate ? `${daysWithoutSale} days` : `${deadStockDays}+ days`,
+        lastSoldDate,
+        lastSoldLabel: lastSoldDate ? formatDate(lastSoldDate) : 'Never',
+        potentialValueLocked,
+        productId: product.id,
+        productName: product.name,
+        saleValue: sellingPrice,
+      }
+    })
+    .filter((item) => item.currentStock > 0)
+    .filter((item) => !item.lastSoldDate || item.daysWithoutSale >= deadStockDays)
+    .sort((a, b) => b.potentialValueLocked - a.potentialValueLocked)
 }
 
 function sumChecks(stockChecks) {
