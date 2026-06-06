@@ -301,7 +301,7 @@ function App() {
         )
         setStockChecks((current) => [...records, ...current])
         showToast('success', 'Stock check saved.')
-        return true
+        return records
       } catch {
         showError('Stock check could not be saved to Firestore.')
         return false
@@ -316,7 +316,7 @@ function App() {
     )
     setStockChecks((current) => [...records, ...current])
     showToast('success', 'Stock check saved locally.')
-    return true
+    return records
   }
 
   async function saveStockCheckRecord(row) {
@@ -1285,6 +1285,44 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
   const [isSaving, setIsSaving] = useState(false)
   const [savingProductId, setSavingProductId] = useState('')
   const [pendingRows, setPendingRows] = useState(null)
+  const today = new Date().toISOString().slice(0, 10)
+  const savedCounts = useMemo(() => {
+    const byProduct = new Map()
+
+    stockChecks
+      .filter((item) => item.date === today && item.productId)
+      .forEach((item) => {
+        const current = byProduct.get(item.productId)
+        if (current && sortMovementDate(current) >= sortMovementDate(item)) return
+        byProduct.set(item.productId, item)
+      })
+
+    return byProduct
+  }, [stockChecks, today])
+
+  useEffect(() => {
+    setCounts((current) => {
+      const next = { ...current }
+
+      savedCounts.forEach((record, productId) => {
+        const existing = current[productId]
+        const hasDirtyEdit =
+          existing && !existing.isSaved && (existing.displayQty !== '' || existing.storeQty !== '')
+
+        if (hasDirtyEdit) return
+        next[productId] = {
+          displayQty: String(Number(record.displayQty) || 0),
+          isSaved: true,
+          recordId: record.id,
+          storeQty: String(Number(record.storeQty) || 0),
+          systemQty: Number(record.systemQty ?? record.previousStock) || 0,
+        }
+      })
+
+      return next
+    })
+  }, [savedCounts])
+
   const visibleProducts = useMemo(() => {
     const lowered = query.toLowerCase().trim()
 
@@ -1337,9 +1375,13 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
   )
   const dailyUsers = getStockCheckUsers(filteredStockChecks)
 
-  function isProductChecked(productId) {
+  function isProductEntered(productId) {
     const count = counts[productId]
     return Boolean(count && (count.displayQty !== '' || count.storeQty !== ''))
+  }
+
+  function isProductChecked(productId) {
+    return Boolean(counts[productId]?.isSaved)
   }
 
   function updateCount(productId, field, value) {
@@ -1380,7 +1422,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
   async function handleSubmit(event) {
     event.preventDefault()
     const rows = progressProducts
-      .filter((product) => isProductChecked(product.id))
+      .filter((product) => isProductEntered(product.id))
       .filter((product) => !counts[product.id]?.isSaved)
       .map((product) => buildStockCheckRow(product, counts[product.id] || {}))
     if (!rows.length) {
@@ -1392,18 +1434,20 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
 
   async function confirmSave() {
     setIsSaving(true)
-    const didSave = await onSave(pendingRows || [])
+    const savedRecords = await onSave(pendingRows || [])
     setIsSaving(false)
-    if (didSave) {
+    if (savedRecords) {
       setCounts((current) => {
         const next = { ...current }
-        const savedRows = pendingRows || []
+        const records = Array.isArray(savedRecords) ? savedRecords : []
 
-        savedRows.forEach((row) => {
-          if (next[row.productId]) {
-            next[row.productId] = {
-              ...next[row.productId],
+        records.forEach((record) => {
+          if (next[record.productId]) {
+            next[record.productId] = {
+              ...next[record.productId],
               isSaved: true,
+              recordId: record.id,
+              systemQty: record.systemQty,
             }
           }
         })
@@ -1616,7 +1660,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
 function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) {
   const displayQty = count.displayQty ?? ''
   const storeQty = count.storeQty ?? ''
-  const isChecked = displayQty !== '' || storeQty !== ''
+  const hasEntry = displayQty !== '' || storeQty !== ''
   const isSaved = Boolean(count.isSaved)
   const systemQty = Number(count.systemQty ?? product.stockQty) || 0
   const physicalQty = (Number(displayQty) || 0) + (Number(storeQty) || 0)
@@ -1627,10 +1671,12 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
     <article className="grid grid-cols-[1fr_auto] gap-2 bg-white/0 px-2.5 py-1.5 transition hover:bg-white/70">
       <div className="min-w-0 self-center">
         <div className="flex min-w-0 items-center gap-1.5">
-          {isChecked && (
+          {isSaved ? (
             <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">
               <CheckIcon className="h-3 w-3" />
             </span>
+          ) : (
+            <span className="h-4 w-4 shrink-0 rounded-full border-2 border-zinc-300 bg-white" />
           )}
           <p className="truncate text-[13px] font-semibold leading-tight">{product.name}</p>
         </div>
@@ -1688,11 +1734,22 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
                 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
                 : 'bg-zinc-950 text-white shadow-sm'
             }`}
-            disabled={!isChecked || isSaved || isSaving}
+            disabled={!hasEntry || isSaved || isSaving}
             onClick={() => onSave(product)}
             type="button"
           >
-            {isSaving ? 'Saving' : isSaved ? '✓ Saved' : count.recordId ? 'Save Again' : 'Save'}
+            {isSaving ? (
+              'Saving'
+            ) : isSaved ? (
+              <span className="inline-flex items-center justify-center gap-1">
+                <CheckIcon className="h-3 w-3" />
+                Saved
+              </span>
+            ) : count.recordId ? (
+              'Save Again'
+            ) : (
+              'Save'
+            )}
           </button>
           <p className="text-right text-[10px] font-bold leading-tight text-zinc-600 sm:text-[11px]">
             Total {physicalQty}
