@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   collection,
   deleteDoc,
@@ -15,6 +15,7 @@ const PRODUCTS_KEY = 'duitstock-products'
 const STOCK_CHECKS_KEY = 'duitstock-stock-checks'
 const STOCK_IN_RECORDS_KEY = 'duitstock-stock-in-records'
 const USER_ROLE_KEY = 'currentUserRole'
+const LAST_BACKUP_KEY = 'duitstock-last-backup-at'
 
 const emptyProduct = {
   name: '',
@@ -91,6 +92,7 @@ function App() {
   const [stockInProduct, setStockInProduct] = useState(null)
   const [actionError, setActionError] = useState('')
   const [toast, setToast] = useState(null)
+  const [lastBackupAt, setLastBackupAt] = useState(() => readStorage(LAST_BACKUP_KEY, ''))
 
   useEffect(() => {
     if (!currentUserRole) return
@@ -216,10 +218,15 @@ function App() {
       return false
     }
 
-    const invalidRow = checkRows.find((row) => Number(row.countedStock) < 0)
+    const invalidRow = checkRows.find(
+      (row) =>
+        Number(row.displayQty) < 0 ||
+        Number(row.storeQty) < 0 ||
+        Number(row.physicalQty ?? row.countedStock) < 0,
+    )
 
     if (invalidRow) {
-      showError('Current counted stock cannot be negative.')
+      showError('Stock check quantities cannot be negative.')
       return false
     }
 
@@ -232,10 +239,13 @@ function App() {
 
     const checkedAt = new Date().toISOString().slice(0, 10)
     const records = checkRows.map((row) => {
-      const previousStock = Number(row.previousStock) || 0
-      const countedStock = Number(row.countedStock) || 0
-      const soldQty = Math.max(0, previousStock - countedStock)
-      const addedQty = Math.max(0, countedStock - previousStock)
+      const displayQty = Number(row.displayQty) || 0
+      const storeQty = Number(row.storeQty) || 0
+      const systemQty = Number(row.systemQty ?? row.previousStock) || 0
+      const physicalQty = Number(row.physicalQty ?? row.countedStock) || 0
+      const difference = physicalQty - systemQty
+      const soldQty = Math.max(0, -difference)
+      const addedQty = Math.max(0, difference)
       const salesValue = soldQty * (Number(row.sellingPrice) || 0)
       const costValue = soldQty * (Number(row.costPrice) || 0)
       const profit = soldQty > 0 ? salesValue - costValue : 0
@@ -244,16 +254,21 @@ function App() {
         id: createId(),
         addedQty,
         costValue,
-        countedStock,
+        countedStock: physicalQty,
         checkedBy: currentUserRole,
         date: checkedAt,
+        difference,
+        displayQty,
         note: 'Stock check',
-        previousStock,
+        physicalQty,
+        previousStock: systemQty,
         productId: row.productId,
         productName: row.productName,
         profit,
         salesValue,
         soldQty,
+        storeQty,
+        systemQty,
         type: 'stock-check',
       }
     })
@@ -302,6 +317,76 @@ function App() {
     setStockChecks((current) => [...records, ...current])
     showToast('success', 'Stock check saved locally.')
     return true
+  }
+
+  async function saveStockCheckRecord(row) {
+    if (!isAdmin && !isStaff) {
+      showError('Only logged-in users can save stock checks.')
+      return false
+    }
+
+    if (
+      Number(row.displayQty) < 0 ||
+      Number(row.storeQty) < 0 ||
+      Number(row.physicalQty ?? row.countedStock) < 0
+    ) {
+      showError('Stock check quantities cannot be negative.')
+      return false
+    }
+
+    setActionError('')
+
+    const recordId = row.recordId || createId()
+    const record = buildStockCheckRecord({
+      row,
+      checkedAt: new Date().toISOString().slice(0, 10),
+      currentUserRole,
+      id: recordId,
+    })
+
+    if (isCloudEnabled) {
+      try {
+        const batch = writeBatch(db)
+
+        batch.set(
+          doc(db, 'stockChecks', record.id),
+          {
+            ...record,
+            checkedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
+        batch.set(
+          doc(db, 'products', record.productId),
+          {
+            stockQty: record.countedStock,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
+        await batch.commit()
+      } catch {
+        showError('Stock check could not be saved to Firestore.')
+        return false
+      }
+    }
+
+    setProducts((current) =>
+      current.map((product) =>
+        product.id === record.productId
+          ? { ...product, stockQty: record.countedStock }
+          : product,
+      ),
+    )
+    setStockChecks((current) => {
+      const exists = current.some((item) => item.id === record.id)
+      return exists
+        ? current.map((item) => (item.id === record.id ? { ...item, ...record } : item))
+        : [record, ...current]
+    })
+    showToast('success', 'Product stock check saved.')
+    return record
   }
 
   async function saveStockIn(stockIn) {
@@ -393,6 +478,54 @@ function App() {
     return true
   }
 
+  async function deleteStockInRecord(record) {
+    if (!record?.id) {
+      showError('Stock in record was not found.')
+      return false
+    }
+
+    const quantityAdded = Number(record.quantityAdded) || 0
+    const product = products.find((item) => item.id === record.productId)
+
+    if (!product) {
+      showError('Product was not found. Please refresh and try again.')
+      return false
+    }
+
+    setActionError('')
+
+    if (isCloudEnabled) {
+      try {
+        const batch = writeBatch(db)
+
+        batch.delete(doc(db, 'stockInRecords', record.id))
+        batch.set(
+          doc(db, 'products', record.productId),
+          {
+            stockQty: increment(-quantityAdded),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
+        await batch.commit()
+      } catch {
+        showError('Stock in record could not be deleted from Firestore.')
+        return false
+      }
+    }
+
+    setStockInRecords((current) => current.filter((item) => item.id !== record.id))
+    setProducts((current) =>
+      current.map((item) =>
+        item.id === record.productId
+          ? { ...item, stockQty: (Number(item.stockQty) || 0) - quantityAdded }
+          : item,
+      ),
+    )
+    showToast('success', 'Stock in record deleted.')
+    return true
+  }
+
   async function clearAllData() {
     if (!isAdmin) {
       showError('Only admin can clear data.')
@@ -427,6 +560,69 @@ function App() {
     setStockInRecords([])
     setActivePage('dashboard')
     showToast('success', 'Local data cleared.')
+  }
+
+  function exportBackup() {
+    const exportedAt = new Date().toISOString()
+    const backup = {
+      app: 'DuitStock',
+      version: 1,
+      exportedAt,
+      products,
+      categories: getCategories(products),
+      suppliers: getSuppliers(products),
+      stockChecks,
+      stockInHistory: stockInRecords,
+      settings: {
+        currentUserRole,
+        isCloudEnabled,
+        lastBackupAt: exportedAt,
+      },
+    }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {
+      type: 'application/json',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = `duitstock-backup-${exportedAt.slice(0, 10)}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+
+    setLastBackupAt(exportedAt)
+    writeStorage(LAST_BACKUP_KEY, exportedAt)
+    showToast('success', 'Backup exported.')
+  }
+
+  function importBackup(fileText) {
+    let backup
+
+    try {
+      backup = JSON.parse(fileText)
+    } catch {
+      showError('Backup file is not valid JSON.')
+      return false
+    }
+
+    const restored = normalizeBackupData(backup)
+
+    if (!restored) {
+      showError('Backup file is missing supported DuitStock data.')
+      return false
+    }
+
+    writeStorage(PRODUCTS_KEY, restored.products)
+    writeStorage(STOCK_CHECKS_KEY, restored.stockChecks)
+    writeStorage(STOCK_IN_RECORDS_KEY, restored.stockInRecords)
+    setProducts(restored.products)
+    setStockChecks(restored.stockChecks)
+    setStockInRecords(restored.stockInRecords)
+    setActionError('')
+    showToast('success', 'Backup imported.')
+    return true
   }
 
   async function loadSampleProducts() {
@@ -488,7 +684,12 @@ function App() {
                 <SyncErrorBanner message={actionError || error} />
               )}
               {isAdmin && visibleActivePage === 'dashboard' && (
-                <DashboardPage metrics={metrics} products={products} />
+                <DashboardPage
+                  metrics={metrics}
+                  products={products}
+                  stockChecks={stockChecks}
+                  onOpenDeadStock={() => setActivePage('reports')}
+                />
               )}
               {visibleActivePage === 'products' && (
                 <ProductsPage
@@ -513,15 +714,16 @@ function App() {
                   canViewProfit={isAdmin}
                   products={products}
                   stockChecks={stockChecks}
+                  onSaveProduct={saveStockCheckRecord}
                   onSave={saveStockCheck}
                 />
               )}
               {visibleActivePage === 'stockInHistory' && (
                 <StockInHistoryPage
-                  canDeleteRows={isAdmin}
                   canViewCosts={isAdmin}
                   products={products}
                   stockInRecords={stockInRecords}
+                  onDeleteRecord={deleteStockInRecord}
                   onSave={saveStockIn}
                 />
               )}
@@ -531,10 +733,13 @@ function App() {
               {isAdmin && visibleActivePage === 'settings' && (
                 <SettingsPage
                   isCloudEnabled={isCloudEnabled}
+                  lastBackupAt={lastBackupAt}
                   products={products}
                   stockChecks={stockChecks}
                   stockInRecords={stockInRecords}
                   onClearAll={clearAllData}
+                  onExportBackup={exportBackup}
+                  onImportBackup={importBackup}
                   onLoadSample={loadSampleProducts}
                 />
               )}
@@ -654,10 +859,15 @@ function LoginPage({ onLogin }) {
   )
 }
 
-function DashboardPage({ metrics, products }) {
+function DashboardPage({ metrics, products, stockChecks, onOpenDeadStock }) {
   const lowStock = products.filter(
     (item) => Number(item.stockQty) <= Number(item.minimumStock),
   )
+  const deadStockSummary = buildDeadStockSummary(
+    buildDeadStockReport(products, stockChecks, 7),
+    metrics.totalCostValue,
+  )
+  const deadStockStatus = getDeadStockStatus(deadStockSummary.lockedPercentage)
   const topValueStocks = products
     .map((product) => {
       const stockQty = Number(product.stockQty) || 0
@@ -726,6 +936,23 @@ function DashboardPage({ metrics, products }) {
       value: formatRM(metrics.todayProfit),
       icon: ProfitIcon,
       tone: 'emerald',
+    },
+    {
+      label: 'Dead Stock',
+      value: (
+        <>
+          {deadStockSummary.products} Items
+          <span className="mt-0.5 block text-[11px] font-bold leading-tight text-zinc-500">
+            {formatCompactRM(deadStockSummary.lockedValue)} Locked
+          </span>
+          <span className="block text-[11px] font-bold leading-tight text-zinc-500">
+            {formatCompactPercent(deadStockSummary.lockedPercentage)}
+          </span>
+        </>
+      ),
+      icon: AlertIcon,
+      onClick: onOpenDeadStock,
+      tone: deadStockStatus.tone,
     },
   ]
 
@@ -928,7 +1155,7 @@ function ProductsPage({
       )}
 
       {filteredProducts.length ? (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {filteredProducts.map((product) => (
             <ProductCard
               key={product.id}
@@ -981,14 +1208,33 @@ function ProductCard({
   const profitPerUnit = sellingPrice - costPrice
   const profitMargin = sellingPrice > 0 ? (profitPerUnit / sellingPrice) * 100 : 0
   const totalProfitIfSoldOut = profitPerUnit * stock
+  const title = [product.name, product.category].filter(Boolean).join(' • ')
 
   return (
-    <article className="flex items-start gap-2 rounded-[16px] bg-white px-2.5 py-2 shadow-sm shadow-zinc-200/60 ring-1 ring-zinc-200">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="min-w-0 truncate text-[13px] font-semibold leading-tight">
-            {product.name}
+    <article className="rounded-[14px] bg-white px-2 py-1.5 shadow-sm shadow-zinc-200/50 ring-1 ring-zinc-200">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-[13px] font-bold leading-tight text-zinc-950">
+            {title}
           </h2>
+          {canViewCosts ? (
+            <div className="mt-0.5 space-y-0.5 text-[11px] font-medium leading-tight text-zinc-600">
+              <p className="truncate">
+                Cost {formatCompactRM(costPrice)} | Sell {formatCompactRM(sellingPrice)} | Margin{' '}
+                {formatCompactPercent(profitMargin)}
+              </p>
+              <p className="truncate">
+                Profit {formatCompactRM(profitPerUnit)} | Sold{' '}
+                {formatCompactRM(totalProfitIfSoldOut)}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-0.5 truncate text-[11px] font-medium leading-tight text-zinc-500">
+              Sell {formatCompactRM(sellingPrice)}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${
               isLow ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
@@ -997,25 +1243,10 @@ function ProductCard({
             Stock {Number(product.stockQty) || 0}
           </span>
         </div>
-        {canViewCosts ? (
-          <div className="mt-1 grid grid-cols-2 gap-1 text-[11px] font-medium text-zinc-600 sm:grid-cols-5">
-            <span>Cost {formatRM(costPrice)}</span>
-            <span>Sell {formatRM(sellingPrice)}</span>
-            <span>Profit / unit {formatRM(profitPerUnit)}</span>
-            <span>Margin {formatPercent(profitMargin)}</span>
-            <span className="col-span-2 sm:col-span-1">
-              Sold out {formatRM(totalProfitIfSoldOut)}
-            </span>
-          </div>
-        ) : (
-          <p className="mt-1 truncate text-[11px] font-medium text-zinc-500">
-            {[product.category, `Sell ${formatRM(sellingPrice)}`].filter(Boolean).join(' / ')}
-          </p>
-        )}
       </div>
-      <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
+      <div className="mt-1 flex gap-1">
         <button
-          className="primary-button h-8 rounded-xl px-2"
+          className="primary-button h-8 flex-1 rounded-lg px-2 text-[11px]"
           onClick={() => onStockIn(product)}
           type="button"
         >
@@ -1024,14 +1255,14 @@ function ProductCard({
         {canManageProducts && (
           <>
             <button
-              className="secondary-button h-8 rounded-xl px-2"
+              className="secondary-button h-8 flex-1 rounded-lg px-2 text-[11px]"
               onClick={() => onEdit(product)}
               type="button"
             >
               Edit
             </button>
             <button
-              className="danger-button h-8 rounded-xl px-2"
+              className="danger-button h-8 flex-1 rounded-lg px-2 text-[11px]"
               onClick={() => onDelete(product.id)}
               type="button"
             >
@@ -1044,7 +1275,7 @@ function ProductCard({
   )
 }
 
-function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
+function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSaveProduct }) {
   const categories = useMemo(() => getCategories(products), [products])
   const [category, setCategory] = useState('all')
   const [query, setQuery] = useState('')
@@ -1052,24 +1283,27 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
   const [counts, setCounts] = useState({})
   const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10))
   const [isSaving, setIsSaving] = useState(false)
+  const [savingProductId, setSavingProductId] = useState('')
   const [pendingRows, setPendingRows] = useState(null)
   const visibleProducts = useMemo(() => {
     const lowered = query.toLowerCase().trim()
 
-    return products.filter((product) => {
-      const isChecked = counts[product.id] !== undefined
-      const matchesCategory = category === 'all' || product.category === category
-      const matchesQuery = [product.name, product.category, product.sku]
-        .join(' ')
-        .toLowerCase()
-        .includes(lowered)
-      const matchesStatus =
-        checkFilter === 'all' ||
-        (checkFilter === 'checked' && isChecked) ||
-        (checkFilter === 'unchecked' && !isChecked)
+    return products
+      .filter((product) => {
+        const isChecked = isProductChecked(product.id)
+        const matchesCategory = category === 'all' || product.category === category
+        const matchesQuery = [product.name, product.category, product.sku]
+          .join(' ')
+          .toLowerCase()
+          .includes(lowered)
+        const matchesStatus =
+          checkFilter === 'all' ||
+          (checkFilter === 'checked' && isChecked) ||
+          (checkFilter === 'unchecked' && !isChecked)
 
-      return matchesCategory && matchesQuery && matchesStatus
-    })
+        return matchesCategory && matchesQuery && matchesStatus
+      })
+      .sort((a, b) => Number(isProductChecked(a.id)) - Number(isProductChecked(b.id)))
   }, [category, checkFilter, counts, products, query])
   const progressProducts = useMemo(() => {
     const lowered = query.toLowerCase().trim()
@@ -1085,7 +1319,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
     })
   }, [category, products, query])
   const progressCheckedCount = progressProducts.filter(
-    (product) => counts[product.id] !== undefined,
+    (product) => isProductChecked(product.id),
   ).length
   const progressPercent = progressProducts.length
     ? Math.round((progressCheckedCount / progressProducts.length) * 100)
@@ -1103,9 +1337,34 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
   )
   const dailyUsers = getStockCheckUsers(filteredStockChecks)
 
-  function updateCount(productId, value) {
+  function isProductChecked(productId) {
+    const count = counts[productId]
+    return Boolean(count && (count.displayQty !== '' || count.storeQty !== ''))
+  }
+
+  function updateCount(productId, field, value) {
     if (Number(value) < 0) return
-    setCounts((current) => ({ ...current, [productId]: value }))
+    setCounts((current) => {
+      const nextCount = {
+        displayQty: '',
+        isSaved: false,
+        recordId: '',
+        storeQty: '',
+        systemQty: Number(products.find((product) => product.id === productId)?.stockQty) || 0,
+        ...(current[productId] || {}),
+        [field]: value,
+        isSaved: false,
+      }
+      const next = { ...current }
+
+      if (nextCount.displayQty === '' && nextCount.storeQty === '') {
+        delete next[productId]
+      } else {
+        next[productId] = nextCount
+      }
+
+      return next
+    })
   }
 
   function focusNextInput(productId) {
@@ -1114,22 +1373,20 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
     if (!nextProduct) return
 
     window.requestAnimationFrame(() => {
-      document.querySelector(`[data-stock-input="${nextProduct.id}"]`)?.focus()
+      document.querySelector(`[data-stock-input="${nextProduct.id}-display"]`)?.focus()
     })
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
     const rows = progressProducts
-      .filter((product) => counts[product.id] !== undefined)
-      .map((product) => ({
-      costPrice: product.costPrice,
-      countedStock: Number(counts[product.id] ?? product.stockQty ?? 0),
-      previousStock: Number(product.stockQty) || 0,
-      productId: product.id,
-      productName: product.name,
-      sellingPrice: product.sellingPrice,
-    }))
+      .filter((product) => isProductChecked(product.id))
+      .filter((product) => !counts[product.id]?.isSaved)
+      .map((product) => buildStockCheckRow(product, counts[product.id] || {}))
+    if (!rows.length) {
+      setCounts({})
+      return
+    }
     setPendingRows(rows)
   }
 
@@ -1138,9 +1395,42 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
     const didSave = await onSave(pendingRows || [])
     setIsSaving(false)
     if (didSave) {
-      setCounts({})
+      setCounts((current) => {
+        const next = { ...current }
+        const savedRows = pendingRows || []
+
+        savedRows.forEach((row) => {
+          if (next[row.productId]) {
+            next[row.productId] = {
+              ...next[row.productId],
+              isSaved: true,
+            }
+          }
+        })
+        return next
+      })
       setPendingRows(null)
     }
+  }
+
+  async function saveProductCount(product) {
+    if (!isProductChecked(product.id)) return
+
+    setSavingProductId(product.id)
+    const record = await onSaveProduct(buildStockCheckRow(product, counts[product.id] || {}))
+    setSavingProductId('')
+
+    if (!record) return
+
+    setCounts((current) => ({
+      ...current,
+      [product.id]: {
+        ...(current[product.id] || {}),
+        isSaved: true,
+        recordId: record.id,
+        systemQty: record.systemQty,
+      },
+    }))
   }
 
   return (
@@ -1150,7 +1440,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
           <div>
             <h2 className="text-base font-semibold tracking-tight">Stock check</h2>
             <p className="mt-0.5 text-xs text-zinc-500">
-              Enter current quantity only. DuitStock calculates stock movement in the background.
+              Count display and store stock. DuitStock totals them and calculates movement.
             </p>
           </div>
           <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-bold text-zinc-700 shadow-sm ring-1 ring-zinc-200">
@@ -1229,10 +1519,12 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
           <div className="max-h-[72vh] divide-y divide-zinc-100 overflow-y-auto rounded-[16px] bg-white/70 pb-20 pr-0 sm:max-h-none sm:overflow-visible sm:pb-16">
             {visibleProducts.map((product) => (
               <StockCheckRow
-                count={counts[product.id] ?? String(Number(product.stockQty) || 0)}
+                count={counts[product.id] || { displayQty: '', storeQty: '' }}
+                isSaving={savingProductId === product.id}
                 key={product.id}
                 onChange={updateCount}
                 onEnter={focusNextInput}
+                onSave={saveProductCount}
                 product={product}
               />
             ))}
@@ -1253,7 +1545,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
                 type="submit"
               >
                 <SaveIcon className="mr-2 h-5 w-5" />
-                {isSaving ? 'Saving...' : 'Save Stock Check'}
+                {isSaving ? 'Saving...' : 'Complete Stock Check'}
               </button>
             </div>
           </div>
@@ -1321,34 +1613,95 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave }) {
   )
 }
 
-function StockCheckRow({ count, onChange, onEnter, product }) {
+function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) {
+  const displayQty = count.displayQty ?? ''
+  const storeQty = count.storeQty ?? ''
+  const isChecked = displayQty !== '' || storeQty !== ''
+  const isSaved = Boolean(count.isSaved)
+  const systemQty = Number(count.systemQty ?? product.stockQty) || 0
+  const physicalQty = (Number(displayQty) || 0) + (Number(storeQty) || 0)
+  const difference = physicalQty - systemQty
+  const differenceText = difference > 0 ? `+${difference}` : String(difference)
+
   return (
-    <article className="flex items-center justify-between gap-2 bg-white/0 px-2.5 py-1.5 transition hover:bg-white/70">
-      <div className="min-w-0">
-        <p className="truncate text-[13px] font-semibold leading-tight">{product.name}</p>
+    <article className="grid grid-cols-[1fr_auto] gap-2 bg-white/0 px-2.5 py-1.5 transition hover:bg-white/70">
+      <div className="min-w-0 self-center">
+        <div className="flex min-w-0 items-center gap-1.5">
+          {isChecked && (
+            <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">
+              <CheckIcon className="h-3 w-3" />
+            </span>
+          )}
+          <p className="truncate text-[13px] font-semibold leading-tight">{product.name}</p>
+        </div>
         <p className="text-[11px] font-semibold text-zinc-700">
-          Current Stock: {Number(product.stockQty) || 0}
+          Current Stock: {systemQty}
         </p>
       </div>
-      <label className="shrink-0">
-        <span className="sr-only">Current quantity for {product.name}</span>
-        <input
-          className="h-11 w-24 rounded-[15px] border border-zinc-300 bg-white px-2 text-center text-xl font-bold text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-4 focus:ring-zinc-300"
-          data-stock-input={product.id}
-          inputMode="numeric"
-          min="0"
-          onChange={(event) => onChange(product.id, event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') return
-            event.preventDefault()
-            onEnter(product.id)
-          }}
-          pattern="[0-9]*"
-          placeholder="Qty"
-          type="number"
-          value={count}
-        />
-      </label>
+      <div className="grid shrink-0 grid-cols-[54px_54px_76px] items-end gap-1 sm:grid-cols-[68px_68px_88px]">
+        <label>
+          <span className="mb-0.5 block text-center text-[9px] font-bold uppercase text-zinc-500">
+            Display
+          </span>
+          <input
+            className="h-10 w-full rounded-[13px] border border-zinc-300 bg-white px-1.5 text-center text-base font-bold text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-4 focus:ring-zinc-300 sm:h-11 sm:text-lg"
+            data-stock-input={`${product.id}-display`}
+            inputMode="numeric"
+            min="0"
+            onChange={(event) => onChange(product.id, 'displayQty', event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              document.querySelector(`[data-stock-input="${product.id}-store"]`)?.focus()
+            }}
+            pattern="[0-9]*"
+            placeholder="0"
+            type="number"
+            value={displayQty}
+          />
+        </label>
+        <label>
+          <span className="mb-0.5 block text-center text-[9px] font-bold uppercase text-zinc-500">
+            Store
+          </span>
+          <input
+            className="h-10 w-full rounded-[13px] border border-zinc-300 bg-white px-1.5 text-center text-base font-bold text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-950 focus:ring-4 focus:ring-zinc-300 sm:h-11 sm:text-lg"
+            data-stock-input={`${product.id}-store`}
+            inputMode="numeric"
+            min="0"
+            onChange={(event) => onChange(product.id, 'storeQty', event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              onEnter(product.id)
+            }}
+            pattern="[0-9]*"
+            placeholder="0"
+            type="number"
+            value={storeQty}
+          />
+        </label>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            className={`h-8 w-[76px] rounded-lg px-2 text-[10px] font-bold transition sm:w-20 ${
+              isSaved
+                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                : 'bg-zinc-950 text-white shadow-sm'
+            }`}
+            disabled={!isChecked || isSaved || isSaving}
+            onClick={() => onSave(product)}
+            type="button"
+          >
+            {isSaving ? 'Saving' : isSaved ? '✓ Saved' : count.recordId ? 'Save Again' : 'Save'}
+          </button>
+          <p className="text-right text-[10px] font-bold leading-tight text-zinc-600 sm:text-[11px]">
+            Total {physicalQty}
+            <span className={difference < 0 ? 'text-rose-700' : difference > 0 ? 'text-sky-700' : 'text-zinc-500'}>
+              {' '}| {differenceText}
+            </span>
+          </p>
+        </div>
+      </div>
     </article>
   )
 }
@@ -1398,7 +1751,7 @@ function StockCheckHistoryDay({ canViewProfit, group }) {
 
 function ReportsPage({ products, stockChecks }) {
   const today = new Date().toISOString().slice(0, 10)
-  const [deadStockDays, setDeadStockDays] = useState(30)
+  const [deadStockDays, setDeadStockDays] = useState(7)
   const [dateRange, setDateRange] = useState({
     end: today,
     start: getDateOffset(today, -6),
@@ -1410,6 +1763,18 @@ function ReportsPage({ products, stockChecks }) {
   const deadStockItems = useMemo(
     () => buildDeadStockReport(products, stockChecks, deadStockDays),
     [deadStockDays, products, stockChecks],
+  )
+  const deadStockSummary = useMemo(
+    () =>
+      buildDeadStockSummary(
+        deadStockItems,
+        products.reduce(
+          (total, product) =>
+            total + (Number(product.stockQty) || 0) * (Number(product.costPrice) || 0),
+          0,
+        ),
+      ),
+    [deadStockItems, products],
   )
 
   return (
@@ -1516,13 +1881,22 @@ function ReportsPage({ products, stockChecks }) {
       <DeadStockPanel
         days={deadStockDays}
         items={deadStockItems}
+        summary={deadStockSummary}
         onDaysChange={setDeadStockDays}
       />
     </section>
   )
 }
 
-function DeadStockPanel({ days, items, onDaysChange }) {
+function DeadStockPanel({ days, items, summary, onDaysChange }) {
+  const status = getDeadStockStatus(summary.lockedPercentage)
+  const statusClasses = {
+    emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+    orange: 'bg-orange-50 text-orange-700 ring-orange-100',
+    rose: 'bg-rose-50 text-rose-700 ring-rose-100',
+    yellow: 'bg-yellow-50 text-yellow-700 ring-yellow-100',
+  }
+
   return (
     <div className="rounded-[20px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1533,7 +1907,7 @@ function DeadStockPanel({ days, items, onDaysChange }) {
           </p>
         </div>
         <div className="grid grid-cols-3 gap-1 rounded-xl bg-zinc-100 p-1">
-          {[30, 60, 90].map((option) => (
+          {[7, 14, 21].map((option) => (
             <button
               className={`h-8 rounded-lg px-2 text-xs font-bold ${
                 days === option ? 'bg-zinc-950 text-white shadow-sm' : 'text-zinc-600'
@@ -1548,11 +1922,30 @@ function DeadStockPanel({ days, items, onDaysChange }) {
         </div>
       </div>
 
+      <div className="mt-3 rounded-[16px] bg-zinc-50 p-2.5 ring-1 ring-zinc-100">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-950">Dead Stock Alert</h3>
+            <p className="mt-0.5 text-[11px] font-semibold text-zinc-500">
+              Products: {summary.products}
+            </p>
+          </div>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${statusClasses[status.tone]}`}>
+            {status.label}
+          </span>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          <Info label="Products" value={summary.products} />
+          <Info label="Locked Value" value={formatRM(summary.lockedValue)} />
+          <Info label="Locked Percentage" value={formatCompactPercent(summary.lockedPercentage)} />
+        </div>
+      </div>
+
       {items.length ? (
         <div className="mt-3 space-y-1.5">
           {items.map((item) => (
             <article
-              className="rounded-[16px] bg-zinc-50 p-2.5 ring-1 ring-zinc-100"
+              className="rounded-[16px] bg-zinc-50 p-2 ring-1 ring-zinc-100 sm:p-2.5"
               key={item.productId}
             >
               <div className="flex items-start justify-between gap-2">
@@ -1563,14 +1956,15 @@ function DeadStockPanel({ days, items, onDaysChange }) {
                   </p>
                 </div>
                 <p className="shrink-0 text-right text-sm font-bold text-zinc-950">
-                  {formatRM(item.potentialValueLocked)}
+                  {formatRM(item.costValueLocked)}
                 </p>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
                 <Info label="Sale value" value={formatRM(item.saleValue)} />
                 <Info label="Last sold" value={item.lastSoldLabel} />
                 <Info label="No sale" value={item.daysWithoutSaleLabel} />
-                <Info label="Value locked" value={formatRM(item.potentialValueLocked)} />
+                <Info label="Days since last sale" value={item.daysSinceLastSaleLabel} />
+                <Info label="Value locked" value={formatRM(item.costValueLocked)} />
               </div>
             </article>
           ))}
@@ -1647,9 +2041,9 @@ function ConfirmStockCheckModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/30 px-3 pb-3 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6">
       <div className="w-full rounded-[24px] bg-white p-4 shadow-xl shadow-zinc-950/15 sm:max-w-md">
-        <h2 className="text-xl font-semibold tracking-tight">Save stock check?</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Complete stock check?</h2>
         <p className="mt-1 text-xs text-zinc-500">
-          This will update product stock and save today&apos;s stock-check history.
+          This will save any unsaved counted products and update stock-check history.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Info label="Products" value={rows.length} />
@@ -1687,13 +2081,15 @@ function ConfirmStockCheckModal({
 }
 
 function StockInHistoryPage({
-  canDeleteRows,
   canViewCosts,
   products,
   stockInRecords,
+  onDeleteRecord,
   onSave,
 }) {
   const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10))
+  const [pendingDeleteRecord, setPendingDeleteRecord] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const filteredRecords = stockInRecords.filter(
     (record) => getRecordDateValue(record) === filterDate,
   )
@@ -1705,7 +2101,6 @@ function StockInHistoryPage({
   return (
     <section className="space-y-2.5">
       <StockInEntryBox
-        canDeleteRows={canDeleteRows}
         date={filterDate}
         products={products}
         onSave={onSave}
@@ -1730,15 +2125,16 @@ function StockInHistoryPage({
 
       {filteredRecords.length ? (
         <div className="overflow-hidden rounded-[18px] bg-white shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
-          <div className="grid grid-cols-[74px_1fr_58px] gap-2 bg-zinc-50 px-2.5 py-2 text-[10px] font-bold uppercase text-zinc-500">
+          <div className="grid grid-cols-[74px_1fr_58px_32px] gap-2 bg-zinc-50 px-2.5 py-2 text-[10px] font-bold uppercase text-zinc-500">
             <span>Date</span>
             <span>Product</span>
             <span className="text-right">Qty</span>
+            <span></span>
           </div>
           <div className="divide-y divide-zinc-100">
             {filteredRecords.map((record) => (
               <article className="px-2.5 py-2" key={record.id}>
-                <div className="grid grid-cols-[74px_1fr_58px] items-center gap-2 text-xs">
+                <div className="grid grid-cols-[74px_1fr_58px_32px] items-center gap-2 text-xs">
                   <p className="font-semibold text-zinc-500">
                     {formatShortDate(record)}
                   </p>
@@ -1748,6 +2144,14 @@ function StockInHistoryPage({
                   <p className="text-right text-sm font-bold text-emerald-700">
                     +{Number(record.quantityAdded) || 0}
                   </p>
+                  <button
+                    aria-label={`Delete stock in record for ${record.productName}`}
+                    className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                    onClick={() => setPendingDeleteRecord(record)}
+                    type="button"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2 text-[11px] font-medium text-zinc-500">
                   {canViewCosts && (
@@ -1771,17 +2175,70 @@ function StockInHistoryPage({
           text="Saved stock additions for the selected date will appear here."
         />
       )}
+
+      {pendingDeleteRecord && (
+        <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/30 px-3 pb-3 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6">
+          <div className="w-full rounded-[26px] bg-white p-4 shadow-2xl shadow-zinc-950/20 sm:max-w-md">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold tracking-tight">
+                  Delete this stock in record?
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  This will also reduce the product stock quantity by the same amount.
+                </p>
+                <p className="mt-2 truncate text-xs font-semibold text-zinc-500">
+                  {pendingDeleteRecord.productName} · +{Number(pendingDeleteRecord.quantityAdded) || 0}
+                </p>
+              </div>
+              <button
+                aria-label="Cancel delete"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-100 text-zinc-600"
+                onClick={() => setPendingDeleteRecord(null)}
+                type="button"
+              >
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                className="secondary-button h-11"
+                disabled={isDeleting}
+                onClick={() => setPendingDeleteRecord(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="danger-button h-11"
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true)
+                  const didDelete = await onDeleteRecord(pendingDeleteRecord)
+                  setIsDeleting(false)
+                  if (didDelete) setPendingDeleteRecord(null)
+                }}
+                type="button"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
 
-function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
+function StockInEntryBox({ date, products, onSave }) {
   const [rows, setRows] = useState([])
   const [search, setSearch] = useState('')
   const [supplierNotes, setSupplierNotes] = useState('')
   const [showAdditionalCosts, setShowAdditionalCosts] = useState(false)
   const [additionalCosts, setAdditionalCosts] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [pendingQtyFocusId, setPendingQtyFocusId] = useState('')
+  const qtyInputRefs = useRef({})
   const searchTerm = search.trim().toLowerCase()
   const suggestions = searchTerm
     ? products
@@ -1798,15 +2255,23 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
     0,
   )
   const totalAmount = rowTotal + (Number(additionalCosts) || 0)
-  const tableGridClass = canDeleteRows
-    ? 'grid-cols-[minmax(92px,2.3fr)_46px_48px_54px_58px_26px] sm:grid-cols-[minmax(180px,2.4fr)_76px_76px_92px_96px_38px]'
-    : 'grid-cols-[minmax(104px,2.3fr)_48px_52px_58px_62px] sm:grid-cols-[minmax(190px,2.4fr)_82px_82px_100px_104px]'
+  const tableGridClass =
+    'grid-cols-[minmax(92px,2.3fr)_46px_48px_54px_58px_26px] sm:grid-cols-[minmax(180px,2.4fr)_76px_76px_92px_96px_38px]'
+
+  useEffect(() => {
+    if (!pendingQtyFocusId) return
+
+    qtyInputRefs.current[pendingQtyFocusId]?.focus()
+    setPendingQtyFocusId('')
+  }, [pendingQtyFocusId, rows])
 
   function getAutofillCost(product) {
     return String(Number(product.costPrice) || Number(product.sellingPrice) || 0)
   }
 
   function addRow(product) {
+    const rowId = createId()
+
     setRows((current) => [
       ...current,
       {
@@ -1815,12 +2280,13 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
         productName: product.name,
         purchaseCost: getAutofillCost(product),
         quantityAdded: '',
-        rowId: createId(),
+        rowId,
         sku: product.sku,
         stockQty: Number(product.stockQty) || 0,
       },
     ])
     setSearch('')
+    setPendingQtyFocusId(rowId)
   }
 
   function updateRow(rowId, field, value) {
@@ -1830,8 +2296,10 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
   }
 
   function removeRow(rowId) {
-    if (!canDeleteRows) return
-    setRows((current) => current.filter((row) => row.rowId !== rowId))
+    setRows((current) => {
+      if (current.length <= 1) return []
+      return current.filter((row) => row.rowId !== rowId)
+    })
   }
 
   function handleAutofillCost() {
@@ -1898,7 +2366,7 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
             <span>Qty</span>
             <span>Cost</span>
             <span>Amount</span>
-            {canDeleteRows && <span></span>}
+            <span></span>
           </div>
 
           <div className="divide-y divide-zinc-100 bg-white">
@@ -1923,6 +2391,13 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
                     onChange={(event) =>
                       updateRow(row.rowId, 'quantityAdded', event.target.value)
                     }
+                    ref={(element) => {
+                      if (element) {
+                        qtyInputRefs.current[row.rowId] = element
+                      } else {
+                        delete qtyInputRefs.current[row.rowId]
+                      }
+                    }}
                     required
                     type="number"
                     value={row.quantityAdded}
@@ -1940,16 +2415,14 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
                   <p className="truncate text-right text-[10px] font-bold text-zinc-900 sm:text-xs">
                     {formatCompactRM(amount)}
                   </p>
-                  {canDeleteRows && (
-                    <button
-                      aria-label={`Delete ${row.productName}`}
-                      className="grid h-8 w-6 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 sm:w-8"
-                      onClick={() => removeRow(row.rowId)}
-                      type="button"
-                    >
-                      <TrashIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    </button>
-                  )}
+                  <button
+                    aria-label={`Remove ${row.productName} from stock in`}
+                    className="grid h-8 w-6 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200 sm:w-8"
+                    onClick={() => removeRow(row.rowId)}
+                    type="button"
+                  >
+                    <TrashIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  </button>
                 </div>
               )
             })}
@@ -1991,7 +2464,7 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
               <span className="text-right text-[10px] font-semibold text-zinc-400 sm:text-[11px]">
                 {formatCompactRM(0)}
               </span>
-              {canDeleteRows && <span></span>}
+              <span></span>
             </div>
           </div>
         </div>
@@ -2048,12 +2521,49 @@ function StockInEntryBox({ canDeleteRows, date, products, onSave }) {
 
 function SettingsPage({
   isCloudEnabled,
+  lastBackupAt,
   onClearAll,
+  onExportBackup,
+  onImportBackup,
   onLoadSample,
   products,
   stockChecks,
   stockInRecords,
 }) {
+  const [pendingImportFile, setPendingImportFile] = useState(null)
+  const [importError, setImportError] = useState('')
+  const [isImporting, setIsImporting] = useState(false)
+
+  function handleImportFileChange(event) {
+    const [file] = event.target.files
+
+    event.target.value = ''
+    setImportError('')
+    if (file) setPendingImportFile(file)
+  }
+
+  async function confirmImport() {
+    if (!pendingImportFile) return
+
+    setIsImporting(true)
+    setImportError('')
+
+    try {
+      const text = await pendingImportFile.text()
+      const didImport = onImportBackup(text)
+
+      if (didImport) {
+        setPendingImportFile(null)
+      } else {
+        setImportError('Choose a valid DuitStock backup JSON file.')
+      }
+    } catch {
+      setImportError('Backup file could not be read.')
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
   return (
     <section className="space-y-2.5">
       <div className="rounded-[20px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
@@ -2067,12 +2577,25 @@ function SettingsPage({
           <Info label="Products" value={products.length} />
           <Info label="Stock checks" value={stockChecks.length} />
           <Info label="Stock in" value={stockInRecords.length} />
+          <Info label="Last Backup" value={formatBackupTimestamp(lastBackupAt)} />
         </dl>
       </div>
 
       <div className="rounded-[20px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
         <h2 className="text-base font-semibold">Data actions</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <button className="secondary-button" onClick={onExportBackup} type="button">
+            Export Backup
+          </button>
+          <label className="secondary-button flex cursor-pointer items-center justify-center">
+            Import Backup
+            <input
+              accept="application/json,.json"
+              className="sr-only"
+              onChange={handleImportFileChange}
+              type="file"
+            />
+          </label>
           <button className="secondary-button" onClick={onLoadSample} type="button">
             Load sample products
           </button>
@@ -2081,6 +2604,55 @@ function SettingsPage({
           </button>
         </div>
       </div>
+
+      {pendingImportFile && (
+        <div className="fixed inset-0 z-50 flex items-end bg-zinc-950/30 px-3 pb-3 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6">
+          <div className="w-full rounded-[26px] bg-white p-4 shadow-2xl shadow-zinc-950/20 sm:max-w-md">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold tracking-tight">Import Backup</h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Importing will replace current local data. Continue?
+                </p>
+                <p className="mt-2 truncate text-xs font-semibold text-zinc-500">
+                  {pendingImportFile.name}
+                </p>
+              </div>
+              <button
+                aria-label="Cancel import"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-100 text-zinc-600"
+                onClick={() => setPendingImportFile(null)}
+                type="button"
+              >
+                <CloseIcon className="h-5 w-5" />
+              </button>
+            </div>
+            {importError && (
+              <p className="mb-3 rounded-2xl bg-rose-50 p-3 text-xs font-semibold text-rose-700 ring-1 ring-rose-100">
+                {importError}
+              </p>
+            )}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                className="secondary-button h-11"
+                disabled={isImporting}
+                onClick={() => setPendingImportFile(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-button h-11"
+                disabled={isImporting}
+                onClick={confirmImport}
+                type="button"
+              >
+                {isImporting ? 'Importing...' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -2331,28 +2903,37 @@ function BottomNav({ activePage, items, onChange }) {
   )
 }
 
-function MetricCard({ icon: Icon, label, tone = 'zinc', value }) {
+function MetricCard({ icon: Icon, label, onClick, tone = 'zinc', value }) {
   const tones = {
     amber: 'bg-amber-50 text-amber-700 ring-amber-100',
     emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
     indigo: 'bg-indigo-50 text-indigo-700 ring-indigo-100',
+    orange: 'bg-orange-50 text-orange-700 ring-orange-100',
     rose: 'bg-rose-50 text-rose-700 ring-rose-100',
     sky: 'bg-sky-50 text-sky-700 ring-sky-100',
+    yellow: 'bg-yellow-50 text-yellow-700 ring-yellow-100',
     zinc: 'bg-zinc-100 text-zinc-700 ring-zinc-200',
   }
+  const Component = onClick ? 'button' : 'article'
 
   return (
-    <article className="glass-card group min-h-[74px] p-2 sm:p-2.5">
+    <Component
+      className={`glass-card group min-h-[74px] p-2 text-left sm:p-2.5 ${
+        onClick ? 'w-full transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-zinc-200' : ''
+      }`}
+      onClick={onClick}
+      type={onClick ? 'button' : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="text-[11px] font-semibold leading-tight text-zinc-500">{label}</p>
         <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ring-1 ${tones[tone]}`}>
           <Icon className="h-3 w-3" />
         </span>
       </div>
-      <p className="mt-1.5 break-words text-lg font-semibold tracking-tight text-zinc-950 sm:text-xl">
+      <div className="mt-1.5 break-words text-lg font-semibold tracking-tight text-zinc-950 sm:text-xl">
         {value}
-      </p>
-    </article>
+      </div>
+    </Component>
   )
 }
 
@@ -2640,6 +3221,23 @@ function writeStorage(key, value) {
   }
 }
 
+function normalizeBackupData(backup) {
+  if (!backup || typeof backup !== 'object') return null
+
+  const products = Array.isArray(backup.products) ? backup.products : null
+  const stockChecks = Array.isArray(backup.stockChecks) ? backup.stockChecks : null
+  const stockInRecordsSource = backup.stockInHistory ?? backup.stockInRecords ?? backup.stockIn
+  const stockInRecords = Array.isArray(stockInRecordsSource) ? stockInRecordsSource : null
+
+  if (!products || !stockChecks || !stockInRecords) return null
+
+  return {
+    products: products.map((product) => normalizeProduct(product || {})),
+    stockChecks,
+    stockInRecords,
+  }
+}
+
 function getSyncStatusText(status) {
   if (status === 'syncing') return 'Syncing...'
   if (status === 'synced') return 'Synced'
@@ -2701,6 +3299,64 @@ function getStockCheckUsers(stockChecks) {
   return users.map((user) => user.charAt(0).toUpperCase() + user.slice(1)).join(', ')
 }
 
+function buildStockCheckRow(product, count = {}) {
+  const displayQty = Number(count.displayQty) || 0
+  const storeQty = Number(count.storeQty) || 0
+  const systemQty = Number(count.systemQty ?? product.stockQty) || 0
+  const physicalQty = displayQty + storeQty
+
+  return {
+    costPrice: product.costPrice,
+    countedStock: physicalQty,
+    difference: physicalQty - systemQty,
+    displayQty,
+    physicalQty,
+    previousStock: systemQty,
+    productId: product.id,
+    productName: product.name,
+    recordId: count.recordId,
+    sellingPrice: product.sellingPrice,
+    storeQty,
+    systemQty,
+  }
+}
+
+function buildStockCheckRecord({ checkedAt, currentUserRole, id, row }) {
+  const displayQty = Number(row.displayQty) || 0
+  const storeQty = Number(row.storeQty) || 0
+  const systemQty = Number(row.systemQty ?? row.previousStock) || 0
+  const physicalQty = Number(row.physicalQty ?? row.countedStock) || 0
+  const difference = physicalQty - systemQty
+  const soldQty = Math.max(0, -difference)
+  const addedQty = Math.max(0, difference)
+  const salesValue = soldQty * (Number(row.sellingPrice) || 0)
+  const costValue = soldQty * (Number(row.costPrice) || 0)
+  const profit = soldQty > 0 ? salesValue - costValue : 0
+
+  return {
+    id,
+    addedQty,
+    checkedAt: new Date().toISOString(),
+    checkedBy: currentUserRole,
+    costValue,
+    countedStock: physicalQty,
+    date: checkedAt,
+    difference,
+    displayQty,
+    note: 'Stock check',
+    physicalQty,
+    previousStock: systemQty,
+    productId: row.productId,
+    productName: row.productName,
+    profit,
+    salesValue,
+    soldQty,
+    storeQty,
+    systemQty,
+    type: 'stock-check',
+  }
+}
+
 function buildReport(stockChecks, startDate, endDate) {
   const today = new Date().toISOString().slice(0, 10)
   const weekStart = getDateOffset(today, -6)
@@ -2745,18 +3401,22 @@ function buildDeadStockReport(products, stockChecks, deadStockDays) {
   return products
     .map((product) => {
       const currentStock = Number(product.stockQty) || 0
+      const costPrice = Number(product.costPrice) || 0
       const sellingPrice = Number(product.sellingPrice) || 0
       const lastSoldDate = lastSoldByProduct.get(product.id)
       const daysWithoutSale = lastSoldDate
         ? Math.max(0, Math.floor((today - new Date(`${lastSoldDate}T00:00:00`)) / 86400000))
         : deadStockDays
+      const costValueLocked = currentStock * costPrice
       const potentialValueLocked = currentStock * sellingPrice
 
       return {
         category: product.category,
+        costValueLocked,
         currentStock,
         daysWithoutSale,
-        daysWithoutSaleLabel: lastSoldDate ? `${daysWithoutSale} days` : `${deadStockDays}+ days`,
+        daysSinceLastSaleLabel: lastSoldDate ? `${daysWithoutSale} Days Ago` : `${deadStockDays}+ Days`,
+        daysWithoutSaleLabel: lastSoldDate ? `${daysWithoutSale} Days Ago` : `${deadStockDays}+ Days`,
         lastSoldDate,
         lastSoldLabel: lastSoldDate ? formatDate(lastSoldDate) : 'Never',
         potentialValueLocked,
@@ -2767,7 +3427,30 @@ function buildDeadStockReport(products, stockChecks, deadStockDays) {
     })
     .filter((item) => item.currentStock > 0)
     .filter((item) => !item.lastSoldDate || item.daysWithoutSale >= deadStockDays)
-    .sort((a, b) => b.potentialValueLocked - a.potentialValueLocked)
+    .sort((a, b) => b.costValueLocked - a.costValueLocked)
+}
+
+function buildDeadStockSummary(items, totalInventoryCostValue) {
+  const lockedValue = items.reduce(
+    (total, item) => total + (Number(item.costValueLocked) || 0),
+    0,
+  )
+  const lockedPercentage = totalInventoryCostValue
+    ? (lockedValue / totalInventoryCostValue) * 100
+    : 0
+
+  return {
+    lockedPercentage,
+    lockedValue,
+    products: items.length,
+  }
+}
+
+function getDeadStockStatus(lockedPercentage) {
+  if (lockedPercentage >= 30) return { label: 'Critical', tone: 'rose' }
+  if (lockedPercentage >= 20) return { label: 'High', tone: 'orange' }
+  if (lockedPercentage >= 10) return { label: 'Watch', tone: 'yellow' }
+  return { label: 'Healthy', tone: 'emerald' }
 }
 
 function sumChecks(stockChecks) {
@@ -2905,9 +3588,32 @@ function getCategories(products) {
   return [...new Set(products.map((item) => item.category).filter(Boolean))].sort()
 }
 
+function getSuppliers(products) {
+  return [...new Set(products.map((item) => item.supplier).filter(Boolean))].sort()
+}
+
 function createId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID()
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function formatBackupTimestamp(value) {
+  if (!value) return 'Never'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Never'
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    hour: 'numeric',
+    hour12: true,
+    minute: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+    .format(date)
+    .replace(',', '')
+    .replace(/\b(am|pm)\b/i, (period) => period.toUpperCase())
 }
 
 function formatRM(value) {
@@ -2937,6 +3643,12 @@ function formatPercent(value) {
   return `${new Intl.NumberFormat('en-MY', {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
+  }).format(Number(value) || 0)}%`
+}
+
+function formatCompactPercent(value) {
+  return `${new Intl.NumberFormat('en-MY', {
+    maximumFractionDigits: 1,
   }).format(Number(value) || 0)}%`
 }
 
