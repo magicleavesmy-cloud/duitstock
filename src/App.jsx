@@ -658,6 +658,20 @@ function DashboardPage({ metrics, products }) {
   const lowStock = products.filter(
     (item) => Number(item.stockQty) <= Number(item.minimumStock),
   )
+  const topValueStocks = products
+    .map((product) => {
+      const stockQty = Number(product.stockQty) || 0
+      const costPrice = Number(product.costPrice) || 0
+
+      return {
+        ...product,
+        costPrice,
+        stockQty,
+        stockValue: stockQty * costPrice,
+      }
+    })
+    .sort((a, b) => b.stockValue - a.stockValue)
+    .slice(0, 10)
   const dashboardCards = [
     {
       label: 'Total Products',
@@ -721,6 +735,57 @@ function DashboardPage({ metrics, products }) {
         {dashboardCards.map((card) => (
           <MetricCard key={card.label} {...card} />
         ))}
+      </div>
+
+      <div className="premium-panel overflow-hidden">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-8 w-8 place-items-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100">
+              <WalletIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold tracking-tight">
+                Top 10 Highest Value Stocks
+              </h2>
+              <p className="mt-0.5 text-xs text-zinc-500">
+                Ranked by current stock quantity and cost price.
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
+            {topValueStocks.length}
+          </span>
+        </div>
+
+        {topValueStocks.length ? (
+          <div className="mt-3 space-y-1.5">
+            {topValueStocks.map((item) => (
+              <div
+                className="flex items-center justify-between gap-2.5 rounded-[18px] bg-white/72 p-2 shadow-sm ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
+                key={item.id}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <ProductThumbnail name={item.name} />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{item.name}</p>
+                    <p className="truncate text-xs text-zinc-500">
+                      {item.category || 'Uncategorised'} · Stock {item.stockQty} · Cost{' '}
+                      {formatRM(item.costPrice)}
+                    </p>
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-[10px] font-bold uppercase text-zinc-400">Value</p>
+                  <p className="text-sm font-bold text-zinc-950">
+                    {formatRM(item.stockValue)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="No stock value data yet" text="Products will appear here after they are added." />
+        )}
       </div>
 
       <div className="premium-panel overflow-hidden">

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">duitstock</string>
+    <string name="title_activity_main">duitstock</string>
+    <string name="package_name">com.duitstock.app</string>
+    <string name="custom_url_scheme">com.duitstock.app</string>
+</resources>
