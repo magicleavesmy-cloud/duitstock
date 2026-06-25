@@ -1416,7 +1416,6 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
           recordId: record.id,
           storeQty: String(Number(record.storeQty) || 0),
           systemQty: Number(record.systemQty ?? record.previousStock) || 0,
-          savedAt: record.updatedAt || record.createdAt || record.savedAt || record.date || '',
         }
       })
 
@@ -1559,7 +1558,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
   }
 
   async function saveProductCount(product) {
-    if (!isProductEntered(product.id) || counts[product.id]?.isSaved) return
+    if (!isProductChecked(product.id)) return
 
     setSavingProductId(product.id)
     const record = await onSaveProduct(buildStockCheckRow(product, counts[product.id] || {}))
@@ -1574,7 +1573,6 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
         isSaved: true,
         recordId: record.id,
         systemQty: record.systemQty,
-        savedAt: record.updatedAt || record.createdAt || record.savedAt || new Date().toISOString(),
       },
     }))
   }
@@ -1781,16 +1779,6 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
           <p className="mt-0.5 text-[10px] font-bold leading-tight text-zinc-500">
             Current Stock: {systemQty}
           </p>
-          {count.savedAt && (
-            <p className="mt-0.5 text-[9px] font-bold leading-tight text-emerald-700">
-              {new Date(count.savedAt).toLocaleString('en-MY', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-          )}
         </div>
       </div>
 
