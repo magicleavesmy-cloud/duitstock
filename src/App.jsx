@@ -879,45 +879,97 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <DashboardBox
-          icon={BoxIcon}
-          iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
-          title="1. Stock Overview"
-        >
-          <DashboardStatRow
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-2.5">
+        <div className="min-w-0 space-y-2.5">
+          <DashboardBox
+            accent="green"
             icon={BoxIcon}
-            iconClassName="bg-emerald-50 text-emerald-700"
-            label="Products"
-            value={summary.totalProducts}
-            valueClassName="text-emerald-700"
-          />
-          <DashboardStatRow
-            icon={LayersIcon}
-            iconClassName="bg-blue-50 text-blue-600"
-            label="Total Stock Qty"
-            value={summary.totalStockQty}
-            valueClassName="text-blue-600"
-          />
-          <DashboardStatRow
-            icon={WalletIcon}
-            iconClassName="bg-purple-50 text-purple-700"
-            label="Total Stock Value"
-            value={formatRM(summary.totalStockValue)}
-            valueClassName="text-purple-700"
-          />
-        </DashboardBox>
+            iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
+            title="Stock Overview"
+          >
+            <DashboardStatRow
+              icon={BoxIcon}
+              iconClassName="bg-emerald-50 text-emerald-700"
+              label="Products"
+              value={summary.totalProducts}
+              valueClassName="text-emerald-700"
+            />
+            <DashboardStatRow
+              icon={LayersIcon}
+              iconClassName="bg-blue-50 text-blue-600"
+              label="Total Stock Qty"
+              value={summary.totalStockQty}
+              valueClassName="text-blue-600"
+            />
+            <DashboardStatRow
+              icon={WalletIcon}
+              iconClassName="bg-purple-50 text-purple-700"
+              label="Total Stock Value"
+              value={formatRM(summary.totalStockValue)}
+              valueClassName="text-purple-700"
+            />
+          </DashboardBox>
+
+          <DashboardBox
+            accent="teal"
+            icon={CalendarIcon}
+            iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
+            title="Last 10 Days Summary"
+          >
+            <DashboardStatRow
+              icon={ArrowUpIcon}
+              iconClassName="bg-emerald-50 text-emerald-700"
+              label="Total In Stock Value"
+              sublabel="Last 10 Days"
+              value={formatRM(summary.last10Days.inValue)}
+              valueClassName="text-emerald-700"
+            />
+            <DashboardStatRow
+              icon={ArrowDownIcon}
+              iconClassName="bg-red-50 text-red-600"
+              label="Total Stock Out Value"
+              sublabel="Last 10 Days"
+              value={formatRM(summary.last10Days.outValue)}
+              valueClassName="text-red-600"
+            />
+          </DashboardBox>
+
+          <DashboardBox
+            accent="blue"
+            icon={CalendarIcon}
+            iconClassName="bg-blue-50 text-blue-600 ring-blue-100"
+            title="This Month Summary"
+          >
+            <DashboardStatRow
+              icon={ArrowUpIcon}
+              iconClassName="bg-emerald-50 text-emerald-700"
+              label="Total In Stock Value"
+              sublabel="This Month"
+              value={formatRM(summary.thisMonth.inValue)}
+              valueClassName="text-emerald-700"
+            />
+            <DashboardStatRow
+              icon={ArrowDownIcon}
+              iconClassName="bg-red-50 text-red-600"
+              label="Total Stock Out Value"
+              sublabel="This Month"
+              value={formatRM(summary.thisMonth.outValue)}
+              valueClassName="text-red-600"
+            />
+          </DashboardBox>
+        </div>
 
         <DashboardBox
+          accent="gold"
           icon={StarIcon}
           iconClassName="bg-amber-50 text-amber-600 ring-amber-100"
-          title="2. Most Value Products"
+          title="Most Value Products"
         >
           {summary.topValueProducts.length ? (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {summary.topValueProducts.map((product, index) => (
                 <div
-                  className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 leading-[1.1]"
+                  className="flex items-center gap-1.5 leading-[1.1]"
                   key={product.id}
                 >
                   <span
@@ -929,10 +981,10 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
                   >
                     {index + 1}
                   </span>
-                  <p className="max-w-[85px] truncate text-[10px] font-bold text-zinc-950">
+                  <p className="max-w-[55%] flex-1 truncate text-[10px] font-bold text-zinc-950">
                     {product.name}
                   </p>
-                  <p className="shrink-0 text-right text-[10px] font-bold text-zinc-950">
+                  <p className="max-w-[40%] shrink-0 truncate text-right text-[10px] font-bold text-zinc-950">
                     {formatRM(product.stockValue)}
                   </p>
                 </div>
@@ -942,52 +994,6 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
             <p className="text-[11px] font-semibold text-zinc-500">No products yet</p>
           )}
         </DashboardBox>
-
-        <DashboardBox
-          icon={CalendarIcon}
-          iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
-          title="3. Last 10 Days Summary"
-        >
-          <DashboardStatRow
-            icon={ArrowUpIcon}
-            iconClassName="bg-emerald-50 text-emerald-700"
-            label="Total In Stock Value"
-            sublabel="Last 10 Days"
-            value={formatRM(summary.last10Days.inValue)}
-            valueClassName="text-emerald-700"
-          />
-          <DashboardStatRow
-            icon={ArrowDownIcon}
-            iconClassName="bg-red-50 text-red-600"
-            label="Total Stock Out Value"
-            sublabel="Last 10 Days"
-            value={formatRM(summary.last10Days.outValue)}
-            valueClassName="text-red-600"
-          />
-        </DashboardBox>
-
-        <DashboardBox
-          icon={CalendarIcon}
-          iconClassName="bg-blue-50 text-blue-600 ring-blue-100"
-          title="4. This Month Summary"
-        >
-          <DashboardStatRow
-            icon={ArrowUpIcon}
-            iconClassName="bg-emerald-50 text-emerald-700"
-            label="Total In Stock Value"
-            sublabel="This Month"
-            value={formatRM(summary.thisMonth.inValue)}
-            valueClassName="text-emerald-700"
-          />
-          <DashboardStatRow
-            icon={ArrowDownIcon}
-            iconClassName="bg-red-50 text-red-600"
-            label="Total Stock Out Value"
-            sublabel="This Month"
-            value={formatRM(summary.thisMonth.outValue)}
-            valueClassName="text-red-600"
-          />
-        </DashboardBox>
       </div>
 
       <DashboardStockEntries entries={summary.recentEntries} />
@@ -995,9 +1001,9 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
   )
 }
 
-function DashboardBox({ children, icon: Icon, iconClassName, title }) {
+function DashboardBox({ accent, children, icon: Icon, iconClassName, title }) {
   return (
-    <section className="dashboard-card rounded-[16px] bg-white p-2.5 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
+    <section className={`dashboard-card dashboard-card-${accent}`}>
       <div className="flex items-center gap-1.5">
         <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ring-1 ${iconClassName}`}>
           <Icon className="h-3.5 w-3.5" />
@@ -1020,12 +1026,12 @@ function DashboardStatRow({
   valueClassName,
 }) {
   return (
-    <div className="mb-1.5 flex items-center justify-between gap-1.5 rounded-[12px] bg-white px-2.5 py-2 shadow-sm ring-1 ring-zinc-100 last:mb-0">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ${iconClassName}`}>
+    <div className="dashboard-card-item rounded-[12px] bg-white shadow-sm ring-1 ring-zinc-100">
+      <div className="flex min-w-0 items-start gap-1.5">
+        <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-lg ${iconClassName}`}>
           <Icon className="h-4 w-4" />
         </span>
-        <div className="min-w-0 max-w-[70px]">
+        <div className="min-w-0">
           <p className="dashboard-label">
             {label}
           </p>
@@ -1036,7 +1042,7 @@ function DashboardStatRow({
           )}
         </div>
       </div>
-      <p className={`dashboard-value min-w-0 shrink text-right ${valueClassName}`}>
+      <p className={`dashboard-value ${valueClassName}`}>
         {value}
       </p>
     </div>
@@ -3713,7 +3719,7 @@ function buildDashboardSummary({ products, stockChecks, stockInRecords }) {
     topValueProducts: productValues
       .filter((product) => product.stockValue > 0)
       .sort((a, b) => b.stockValue - a.stockValue)
-      .slice(0, 5),
+      .slice(0, 10),
   }
 }
 
