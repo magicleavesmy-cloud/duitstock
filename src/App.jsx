@@ -237,7 +237,8 @@ function App() {
 
     setActionError('')
 
-    const checkedAt = new Date().toISOString().slice(0, 10)
+    const productUpdatedAt = new Date().toISOString()
+    const checkedAt = productUpdatedAt.slice(0, 10)
     const records = checkRows.map((row) => {
       const displayQty = Number(row.displayQty) || 0
       const storeQty = Number(row.storeQty) || 0
@@ -286,7 +287,7 @@ function App() {
             doc(db, 'products', record.productId),
             {
               stockQty: record.countedStock,
-              updatedAt: serverTimestamp(),
+              updatedAt: productUpdatedAt,
             },
             { merge: true },
           )
@@ -296,7 +297,9 @@ function App() {
         setProducts((current) =>
           current.map((product) => {
             const record = records.find((item) => item.productId === product.id)
-            return record ? { ...product, stockQty: record.countedStock } : product
+            return record
+              ? { ...product, stockQty: record.countedStock, updatedAt: productUpdatedAt }
+              : product
           }),
         )
         setStockChecks((current) => [...records, ...current])
@@ -311,7 +314,9 @@ function App() {
     setProducts((current) =>
       current.map((product) => {
         const record = records.find((item) => item.productId === product.id)
-        return record ? { ...product, stockQty: record.countedStock } : product
+        return record
+          ? { ...product, stockQty: record.countedStock, updatedAt: productUpdatedAt }
+          : product
       }),
     )
     setStockChecks((current) => [...records, ...current])
@@ -336,10 +341,11 @@ function App() {
 
     setActionError('')
 
+    const productUpdatedAt = new Date().toISOString()
     const recordId = row.recordId || createId()
     const record = buildStockCheckRecord({
       row,
-      checkedAt: new Date().toISOString().slice(0, 10),
+      checkedAt: productUpdatedAt.slice(0, 10),
       currentUserRole,
       id: recordId,
     })
@@ -361,7 +367,7 @@ function App() {
           doc(db, 'products', record.productId),
           {
             stockQty: record.countedStock,
-            updatedAt: serverTimestamp(),
+            updatedAt: productUpdatedAt,
           },
           { merge: true },
         )
@@ -375,7 +381,7 @@ function App() {
     setProducts((current) =>
       current.map((product) =>
         product.id === record.productId
-          ? { ...product, stockQty: record.countedStock }
+          ? { ...product, stockQty: record.countedStock, updatedAt: productUpdatedAt }
           : product,
       ),
     )
@@ -408,6 +414,7 @@ function App() {
 
     setActionError('')
 
+    const productUpdatedAt = new Date().toISOString()
     const recordDate = stockIn.date || new Date().toISOString().slice(0, 10)
     const records = stockInItems.map((item) => {
       const product = products.find((productItem) => productItem.id === item.productId)
@@ -443,7 +450,7 @@ function App() {
             doc(db, 'products', record.productId),
             {
               stockQty: increment(record.quantityAdded),
-              updatedAt: serverTimestamp(),
+              updatedAt: productUpdatedAt,
             },
             { merge: true },
           )
@@ -465,7 +472,11 @@ function App() {
           .reduce((total, record) => total + record.quantityAdded, 0)
 
         return addedQty
-          ? { ...product, stockQty: Number(product.stockQty || 0) + addedQty }
+          ? {
+              ...product,
+              stockQty: Number(product.stockQty || 0) + addedQty,
+              updatedAt: productUpdatedAt,
+            }
           : product
       }),
     )
@@ -1490,7 +1501,6 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
     setCounts((current) => {
       const nextCount = {
         displayQty: '',
-        isSaved: false,
         recordId: '',
         storeQty: '',
         systemQty: Number(products.find((product) => product.id === productId)?.stockQty) || 0,
@@ -1764,6 +1774,8 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
   const systemQty = Number(count.systemQty ?? product.stockQty) || 0
   const physicalQty = (Number(displayQty) || 0) + (Number(storeQty) || 0)
   const difference = physicalQty - systemQty
+  const lastUpdatedLabel = formatProductUpdatedAt(product.updatedAt)
+  const updatedAtState = getProductUpdatedAtState(product.updatedAt)
 
   return (
     <article className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-[14px] bg-white/75 px-2 py-1.5 shadow-sm ring-1 ring-white/80">
@@ -1781,16 +1793,9 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
           <p className="mt-0.5 text-[10px] font-bold leading-tight text-zinc-500">
             Current Stock: {systemQty}
           </p>
-          {count.savedAt && (
-            <p className="mt-0.5 text-[9px] font-bold leading-tight text-emerald-700">
-              {new Date(count.savedAt).toLocaleString('en-MY', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-          )}
+          <p className={`product-updated ${updatedAtState}`}>
+            Last updated: {lastUpdatedLabel}
+          </p>
         </div>
       </div>
 
@@ -3765,6 +3770,50 @@ function formatBackupTimestamp(value) {
     .format(date)
     .replace(',', '')
     .replace(/\b(am|pm)\b/i, (period) => period.toUpperCase())
+}
+
+function formatProductUpdatedAt(value) {
+  if (!value) return 'Not updated yet'
+
+  const date = parseTimestamp(value)
+  if (!date) return 'Not updated yet'
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    hour: 'numeric',
+    hour12: true,
+    minute: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+    .format(date)
+    .replace(/\b(am|pm)\b/i, (period) => period.toUpperCase())
+}
+
+function getProductUpdatedAtState(value) {
+  const date = parseTimestamp(value)
+  if (!date) return 'default'
+
+  const daysOld = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
+  if (daysOld <= 7) return 'fresh'
+  if (daysOld > 7 && daysOld <= 14) return 'warning'
+  return 'expired'
+}
+
+function parseTimestamp(value) {
+  if (!value) return null
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+  if (value.toDate) {
+    const date = value.toDate()
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  if (typeof value.seconds === 'number') {
+    const date = new Date(value.seconds * 1000)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 function formatRM(value) {
