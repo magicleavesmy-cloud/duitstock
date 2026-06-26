@@ -966,29 +966,27 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
           title="Most Value Products"
         >
           {summary.topValueProducts.length ? (
-            <div className="space-y-1">
-              {summary.topValueProducts.map((product, index) => (
-                <div
-                  className="flex items-center gap-1.5 leading-[1.1]"
-                  key={product.id}
-                >
-                  <span
-                    className={`grid h-[18px] w-[18px] place-items-center rounded-md text-[9px] font-bold ${
-                      index < 4
-                        ? 'bg-amber-50 text-amber-700'
-                        : 'bg-zinc-100 text-zinc-600'
-                    }`}
+            <div className="most-value-list">
+              {summary.topValueProducts.map((product, index) => {
+                const statusClass = getProductUpdatedAtState(product.updatedAt)
+
+                return (
+                  <div
+                    className="most-value-item flex items-center gap-1.5 leading-[1.1]"
+                    key={product.id}
                   >
-                    {index + 1}
-                  </span>
-                  <p className="max-w-[55%] flex-1 truncate text-[10px] font-bold text-zinc-950">
-                    {product.name}
-                  </p>
-                  <p className="max-w-[40%] shrink-0 truncate text-right text-[10px] font-bold text-zinc-950">
-                    {formatRM(product.stockValue)}
-                  </p>
-                </div>
-              ))}
+                    <span className={`most-value-rank ${statusClass}`}>
+                      {index + 1}
+                    </span>
+                    <p className="max-w-[55%] flex-1 truncate font-bold text-zinc-950">
+                      {product.name}
+                    </p>
+                    <p className="max-w-[40%] shrink-0 truncate text-right font-bold text-zinc-950">
+                      {formatRM(product.stockValue)}
+                    </p>
+                  </div>
+                )
+              })}
             </div>
           ) : (
             <p className="text-[11px] font-semibold text-zinc-500">No products yet</p>
@@ -3674,6 +3672,7 @@ function buildDashboardSummary({ products, stockChecks, stockInRecords }) {
       id: product.id,
       name: product.name,
       stockValue: currentStock * costPrice,
+      updatedAt: product.updatedAt,
     }
   })
   const totals = productValues.reduce(
@@ -3719,7 +3718,7 @@ function buildDashboardSummary({ products, stockChecks, stockInRecords }) {
     topValueProducts: productValues
       .filter((product) => product.stockValue > 0)
       .sort((a, b) => b.stockValue - a.stockValue)
-      .slice(0, 10),
+      .slice(0, 20),
   }
 }
 
