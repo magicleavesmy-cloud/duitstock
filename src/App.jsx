@@ -1060,8 +1060,8 @@ function DashboardStockEntries({ entries }) {
 
       {entries.length ? (
         <div className="mt-2.5 overflow-x-auto rounded-[14px] ring-1 ring-zinc-100">
-          <div className="min-w-[390px]">
-            <div className="sticky top-0 z-10 grid grid-cols-[100px_70px_50px_50px_70px] gap-1.5 bg-zinc-50 px-2 py-1.5 text-[9px] font-bold uppercase text-zinc-500">
+          <div className="min-w-[330px] table-fixed">
+            <div className="sticky top-0 z-10 grid grid-cols-[110px_60px_45px_50px_65px] bg-zinc-50 px-1.5 py-1.5 text-[9px] font-bold uppercase leading-[1.1] text-zinc-500">
               <span>Product</span>
               <span>Action</span>
               <span className="text-right">Qty</span>
@@ -1071,14 +1071,14 @@ function DashboardStockEntries({ entries }) {
             <div className="divide-y divide-zinc-100 bg-white">
               {entries.map((entry) => (
                 <article
-                  className="grid grid-cols-[100px_70px_50px_50px_70px] items-center gap-1.5 px-2 py-1.5 text-[10px]"
+                  className="grid grid-cols-[110px_60px_45px_50px_65px] items-center px-1.5 py-1.5 text-[10px] leading-[1.1]"
                   key={entry.id}
                 >
-                  <p className="max-w-[100px] truncate font-bold text-zinc-950">
+                  <p className="max-w-[110px] truncate font-bold text-zinc-950">
                     {entry.productName}
                   </p>
                   <span
-                    className={`w-fit rounded-full px-1.5 py-0.5 text-[8px] font-bold ring-1 ${
+                    className={`w-fit rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-[1.1] ring-1 ${
                       entry.action === 'Stock In'
                         ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
                         : 'bg-red-50 text-red-700 ring-red-100'
