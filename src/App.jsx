@@ -37,11 +37,11 @@ const navItems = [
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ]
 const staffNavItems = navItems.filter((item) =>
-  ['products', 'movements', 'stockInHistory'].includes(item.id),
+  ['dashboard', 'products', 'movements', 'stockInHistory'].includes(item.id),
 )
 const roleHomePages = {
   admin: 'dashboard',
-  staff: 'products',
+  staff: 'dashboard',
 }
 
 const sampleProducts = [
@@ -99,10 +99,6 @@ function App() {
     writeStorage(USER_ROLE_KEY, currentUserRole)
   }, [currentUserRole])
 
-  const metrics = useMemo(
-    () => buildMetrics(products, stockChecks),
-    [products, stockChecks],
-  )
   const productCategories = useMemo(() => getCategories(products), [products])
   const visibleActivePage = visibleNavItems.some((item) => item.id === activePage)
     ? activePage
@@ -694,12 +690,11 @@ function App() {
               {(error || actionError) && (
                 <SyncErrorBanner message={actionError || error} />
               )}
-              {isAdmin && visibleActivePage === 'dashboard' && (
+              {visibleActivePage === 'dashboard' && (
                 <DashboardPage
-                  metrics={metrics}
                   products={products}
                   stockChecks={stockChecks}
-                  onOpenDeadStock={() => setActivePage('reports')}
+                  stockInRecords={stockInRecords}
                 />
               )}
               {visibleActivePage === 'products' && (
@@ -870,316 +865,245 @@ function LoginPage({ onLogin }) {
   )
 }
 
-function DashboardPage({ metrics, products, stockChecks, onOpenDeadStock }) {
-  const lowStock = products.filter(
-    (item) => Number(item.stockQty) <= Number(item.minimumStock),
-  )
-  const deadStockSummary = buildDeadStockSummary(
-    buildDeadStockReport(products, stockChecks, 7),
-    metrics.totalCostValue,
-  )
-  const deadStockStatus = getDeadStockStatus(deadStockSummary.lockedPercentage)
-  const latestCheckDate = stockChecks
-    .filter((item) => item.type === 'stock-check' && item.date)
-    .sort((a, b) => new Date(b.date) - new Date(a.date))[0]?.date
-
-  const lastCheckSoldByProduct = stockChecks
-    .filter((item) => item.type === 'stock-check' && item.date === latestCheckDate)
-    .reduce((totals, item) => {
-      totals[item.productId] = (totals[item.productId] || 0) + (Number(item.soldQty) || 0)
-      return totals
-    }, {})
-
-  const topValueStocks = products
-    .map((product) => {
-      const stockQty = Number(product.stockQty) || 0
-      const costPrice = Number(product.costPrice) || 0
-
-      return {
-        ...product,
-        costPrice,
-        stockQty,
-        soldLastCheck: lastCheckSoldByProduct[product.id] || 0,
-        stockValue: stockQty * costPrice,
-      }
-    })
-    .sort((a, b) => b.stockValue - a.stockValue)
-    .slice(0, 10)
-  const dashboardCards = [
-    {
-      label: 'Total Products',
-      value: metrics.totalProducts,
-      icon: PackageCheckIcon,
-      tone: 'zinc',
-    },
-    {
-      label: 'Stock Quantity',
-      value: metrics.totalQuantity,
-      icon: LayersIcon,
-      tone: 'sky',
-    },
-    {
-      label: 'Locked Capital',
-      value: formatRM(metrics.totalCostValue),
-      icon: WalletIcon,
-      tone: 'amber',
-    },
-    {
-      label: 'Potential Revenue',
-      value: formatRM(metrics.totalSellingValue),
-      icon: TagIcon,
-      tone: 'indigo',
-    },
-    {
-      label: 'Potential Profit',
-      value: formatRM(metrics.estimatedProfit),
-      icon: ProfitIcon,
-      tone: 'emerald',
-    },
-    {
-      label: 'Low Stock Alert',
-      value: metrics.lowStockCount,
-      icon: AlertIcon,
-      tone: metrics.lowStockCount ? 'rose' : 'zinc',
-    },
-    {
-      label: 'Last Check Movement',
-      value: metrics.lastCheckMovement,
-      icon: ArrowsIcon,
-      tone: 'sky',
-    },
-    {
-      label: 'Last Check Revenue Est.',
-      value: formatRM(metrics.lastCheckRevenueValue),
-      icon: TagIcon,
-      tone: 'indigo',
-    },
-    {
-      label: 'Last Check Profit Est.',
-      value: (
-        <>
-          {formatRM(metrics.lastCheckProfit)}
-          <span className="mt-0.5 block text-[11px] font-bold leading-tight text-zinc-500">
-            {latestCheckDate ? formatDate(latestCheckDate) : 'No check yet'}
-          </span>
-        </>
-      ),
-      icon: ProfitIcon,
-      tone: 'emerald',
-    },
-    {
-      label: 'Sleeping Stock',
-      value: (
-        <>
-          {deadStockSummary.products} Items
-          <span className="mt-0.5 block text-[11px] font-bold leading-tight text-zinc-500">
-            {formatCompactRM(deadStockSummary.lockedValue)} Frozen
-          </span>
-          <span className="block text-[11px] font-bold leading-tight text-zinc-500">
-            {`>${7} Days No Movement`}
-          </span>
-        </>
-      ),
-      icon: AlertIcon,
-      onClick: onOpenDeadStock,
-      tone: deadStockStatus.tone,
-    },
-  ]
+function DashboardPage({ products, stockChecks, stockInRecords }) {
+  const summary = buildDashboardSummary({ products, stockChecks, stockInRecords })
 
   return (
-    <section className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        {dashboardCards.map((card) => (
-          <MetricCard key={card.label} {...card} />
-        ))}
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight text-zinc-950">
+          DuitStock Dashboard
+        </h2>
+        <p className="mt-0.5 text-xs font-semibold text-zinc-500">
+          Read-only stock summary.
+        </p>
       </div>
 
-      <div className="premium-panel overflow-hidden">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100">
-              <WalletIcon className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold tracking-tight">
-                Top 10 Highest Value Stocks
-              </h2>
-              <p className="mt-0.5 text-xs text-zinc-500">
-                Ranked by current stock quantity and cost price.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
-            {topValueStocks.length}
-          </span>
-        </div>
-
-        {topValueStocks.length ? (
-          <div className="mt-3 space-y-1.5">
-            {topValueStocks.map((item) => (
-              <div
-                className="flex items-center justify-between gap-2.5 rounded-[18px] bg-white/72 p-2 shadow-sm ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
-                key={item.id}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <ProductThumbnail name={item.name} />
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{item.name}</p>
-                    <p className="truncate text-xs text-zinc-500">
-                      {item.category || 'Uncategorised'} · Stock {item.stockQty} · Cost {formatRM(item.costPrice)}
-                    </p>
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <p className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        item.soldLastCheck > 0
-                          ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
-                          : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200'
-                      }`}>
-                        Sold Last Check: {item.soldLastCheck}
-                      </p>
-
-                      <p className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        item.soldLastCheck > 500
-                          ? 'bg-sky-50 text-sky-700 ring-1 ring-sky-100'
-                          : item.soldLastCheck > 100
-                          ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
-                          : item.soldLastCheck > 0
-                          ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-100'
-                          : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200'
-                      }`}>
-                        {item.soldLastCheck > 500
-                          ? 'FAST'
-                          : item.soldLastCheck > 100
-                          ? 'ACTIVE'
-                          : item.soldLastCheck > 0
-                          ? 'SLOW'
-                          : 'SLEEPING'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[10px] font-bold uppercase text-zinc-400">Value</p>
-                  <p className="text-sm font-bold text-zinc-950">
-                    {formatRM(item.stockValue)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="No stock value data yet" text="Products will appear here after they are added." />
-        )}
-      </div>
-
-      <div className="premium-panel overflow-hidden">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
-              <ArrowsIcon className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold tracking-tight">Top Movers</h2>
-              <p className="mt-0.5 text-xs text-zinc-500">
-                Ranked by sold qty from last stock check.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
-            {[...topValueStocks].filter((item) => item.soldLastCheck > 0).length}
-          </span>
-        </div>
-
-        {[...topValueStocks].filter((item) => item.soldLastCheck > 0).length ? (
-        <div className="mt-3 space-y-1.5">
-          {[...topValueStocks]
-            .filter((item) => item.soldLastCheck > 0)
-            .sort((a, b) => b.soldLastCheck - a.soldLastCheck)
-            .slice(0, 10)
-            .map((item) => (
-              <div
-                className="flex items-center justify-between gap-2.5 rounded-[18px] bg-white/72 p-2 shadow-sm ring-1 ring-white/80 backdrop-blur"
-                key={`mover-${item.id}`}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <ProductThumbnail name={item.name} />
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{item.name}</p>
-                    <p className="truncate text-xs text-zinc-500">
-                      {item.category || 'Uncategorised'} · Revenue {formatRM(item.soldLastCheck * Number(item.sellingPrice || 0))}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs font-bold text-emerald-700">
-                      Profit Est. {formatRM(item.soldLastCheck * ((Number(item.sellingPrice) || 0) - (Number(item.costPrice) || 0)))}
-                    </p>
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-[10px] font-bold uppercase text-zinc-400">Sold</p>
-                  <p className="text-sm font-bold text-emerald-700">
-                    {item.soldLastCheck}
-                  </p>
-                </div>
-              </div>
-            ))}
-        </div>
-        ) : (
-          <EmptyState title="No movers yet" text="Products will appear here after the latest stock check shows movement." />
-        )}
-      </div>
-
-      <div className="premium-panel overflow-hidden">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-rose-50 text-rose-600 ring-1 ring-rose-100">
-              <AlertIcon className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold tracking-tight">Low stock</h2>
-                {lowStock.length > 0 && (
-                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-                    Action needed
-                  </span>
-                )}
-              </div>
-              <p className="mt-0.5 text-xs text-zinc-500">
-                Products at or below minimum stock.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
-            {lowStock.length}
-          </span>
-        </div>
-
-        {lowStock.length ? (
-          <div className="mt-3 space-y-1.5">
-            {lowStock.map((item) => (
-              <div
-                className="flex items-center justify-between gap-2.5 rounded-[18px] bg-white/72 p-2 shadow-sm ring-1 ring-white/80 backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md"
-                key={item.id}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <ProductThumbnail name={item.name} />
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{item.name}</p>
-                    <p className="text-xs text-zinc-500">
-                      {item.category || 'Uncategorised'} / Min {item.minimumStock}
-                    </p>
-                  </div>
-                </div>
-                <span className="shrink-0 rounded-full bg-rose-600 px-2 py-1 text-[11px] font-bold text-white shadow-sm shadow-rose-200">
-                  {item.stockQty} left
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="Stock levels look calm"
-            text="Products that reach minimum stock will appear here."
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <DashboardBox
+          icon={BoxIcon}
+          iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
+          title="1. Stock Overview"
+        >
+          <DashboardStatRow
+            icon={BoxIcon}
+            iconClassName="bg-emerald-50 text-emerald-700"
+            label="Products"
+            value={summary.totalProducts}
+            valueClassName="text-emerald-700"
           />
-        )}
+          <DashboardStatRow
+            icon={LayersIcon}
+            iconClassName="bg-blue-50 text-blue-600"
+            label="Total Stock Qty"
+            value={summary.totalStockQty}
+            valueClassName="text-blue-600"
+          />
+          <DashboardStatRow
+            icon={WalletIcon}
+            iconClassName="bg-purple-50 text-purple-700"
+            label="Total Stock Value"
+            value={formatRM(summary.totalStockValue)}
+            valueClassName="text-purple-700"
+          />
+        </DashboardBox>
+
+        <DashboardBox
+          icon={StarIcon}
+          iconClassName="bg-amber-50 text-amber-600 ring-amber-100"
+          title="2. Most Value Products"
+        >
+          {summary.topValueProducts.length ? (
+            <div className="space-y-2">
+              {summary.topValueProducts.map((product, index) => (
+                <div
+                  className="grid grid-cols-[34px_1fr_auto] items-center gap-2"
+                  key={product.id}
+                >
+                  <span
+                    className={`grid h-7 w-7 place-items-center rounded-lg text-xs font-bold ${
+                      index < 4
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-zinc-100 text-zinc-600'
+                    }`}
+                  >
+                    {index + 1}
+                  </span>
+                  <p className="min-w-0 truncate text-sm font-bold text-zinc-950">
+                    {product.name}
+                  </p>
+                  <p className="shrink-0 text-sm font-bold text-zinc-950">
+                    {formatRM(product.stockValue)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm font-semibold text-zinc-500">No products yet</p>
+          )}
+        </DashboardBox>
+
+        <DashboardBox
+          icon={CalendarIcon}
+          iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
+          title="3. Last 10 Days Summary"
+        >
+          <DashboardStatRow
+            icon={ArrowUpIcon}
+            iconClassName="bg-emerald-50 text-emerald-700"
+            label="Total In Stock Value"
+            sublabel="Last 10 Days"
+            value={formatRM(summary.last10Days.inValue)}
+            valueClassName="text-emerald-700"
+          />
+          <DashboardStatRow
+            icon={ArrowDownIcon}
+            iconClassName="bg-red-50 text-red-600"
+            label="Total Stock Out Value"
+            sublabel="Last 10 Days"
+            value={formatRM(summary.last10Days.outValue)}
+            valueClassName="text-red-600"
+          />
+        </DashboardBox>
+
+        <DashboardBox
+          icon={CalendarIcon}
+          iconClassName="bg-blue-50 text-blue-600 ring-blue-100"
+          title="4. This Month Summary"
+        >
+          <DashboardStatRow
+            icon={ArrowUpIcon}
+            iconClassName="bg-emerald-50 text-emerald-700"
+            label="Total In Stock Value"
+            sublabel="This Month"
+            value={formatRM(summary.thisMonth.inValue)}
+            valueClassName="text-emerald-700"
+          />
+          <DashboardStatRow
+            icon={ArrowDownIcon}
+            iconClassName="bg-red-50 text-red-600"
+            label="Total Stock Out Value"
+            sublabel="This Month"
+            value={formatRM(summary.thisMonth.outValue)}
+            valueClassName="text-red-600"
+          />
+        </DashboardBox>
       </div>
+
+      <DashboardStockEntries entries={summary.recentEntries} />
+    </section>
+  )
+}
+
+function DashboardBox({ children, icon: Icon, iconClassName, title }) {
+  return (
+    <section className="min-h-[260px] rounded-[24px] bg-white p-4 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
+      <div className="flex items-center gap-3">
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ring-1 ${iconClassName}`}>
+          <Icon className="h-5 w-5" />
+        </span>
+        <h3 className="text-base font-bold tracking-tight text-zinc-950">{title}</h3>
+      </div>
+      <div className="mt-4 space-y-2">{children}</div>
+    </section>
+  )
+}
+
+function DashboardStatRow({
+  icon: Icon,
+  iconClassName,
+  label,
+  sublabel,
+  value,
+  valueClassName,
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[18px] bg-white px-3 py-3 shadow-sm ring-1 ring-zinc-100">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-2xl ${iconClassName}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-zinc-800">{label}</p>
+          {sublabel && (
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-zinc-500">
+              {sublabel}
+            </p>
+          )}
+        </div>
+      </div>
+      <p className={`shrink-0 text-right text-lg font-bold ${valueClassName}`}>{value}</p>
+    </div>
+  )
+}
+
+function DashboardStockEntries({ entries }) {
+  return (
+    <section className="rounded-[24px] bg-white p-4 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base font-bold tracking-tight text-zinc-950">
+            Last 20 Stock Entries
+          </h3>
+          <p className="mt-0.5 text-xs font-semibold text-zinc-500">
+            Latest stock transaction logs.
+          </p>
+        </div>
+        <span className="rounded-full bg-zinc-50 px-2.5 py-0.5 text-xs font-bold text-zinc-600 ring-1 ring-zinc-200">
+          {entries.length}
+        </span>
+      </div>
+
+      {entries.length ? (
+        <div className="mt-3 overflow-x-auto rounded-[18px] ring-1 ring-zinc-100">
+          <div className="min-w-[560px]">
+            <div className="grid grid-cols-[1.4fr_82px_64px_64px_84px] gap-2 bg-zinc-50 px-3 py-2 text-[10px] font-bold uppercase text-zinc-500">
+              <span>Product</span>
+              <span>Action</span>
+              <span className="text-right">Qty</span>
+              <span className="text-right">Stock</span>
+              <span className="text-right">Updated</span>
+            </div>
+            <div className="divide-y divide-zinc-100 bg-white">
+              {entries.map((entry) => (
+                <article
+                  className="grid grid-cols-[1.4fr_82px_64px_64px_84px] items-center gap-2 px-3 py-2 text-xs"
+                  key={entry.id}
+                >
+                  <p className="min-w-0 truncate font-bold text-zinc-950">
+                    {entry.productName}
+                  </p>
+                  <span
+                    className={`w-fit rounded-full px-2 py-0.5 text-[9px] font-bold ring-1 ${
+                      entry.action === 'Stock In'
+                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+                        : 'bg-red-50 text-red-700 ring-red-100'
+                    }`}
+                  >
+                    {entry.action}
+                  </span>
+                  <p
+                    className={`text-right text-sm font-bold ${
+                      entry.quantityChange > 0 ? 'text-emerald-700' : 'text-red-600'
+                    }`}
+                  >
+                    {entry.quantityChange > 0 ? '+' : ''}
+                    {entry.quantityChange}
+                  </p>
+                  <p className="text-right text-xs font-bold text-zinc-700">
+                    {entry.currentStock}
+                  </p>
+                  <p className={`entry-updated text-right ${entry.updatedState}`}>
+                    {entry.updatedLabel}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <EmptyState title="No stock entries yet" text="Saved stock transactions will appear here." />
+      )}
     </section>
   )
 }
@@ -1390,7 +1314,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
   const categories = useMemo(() => getCategories(products), [products])
   const [category, setCategory] = useState('all')
   const [query, setQuery] = useState('')
-  const [checkFilter, setCheckFilter] = useState('all')
+  const [updatedAtFilter, setUpdatedAtFilter] = useState('all')
   const [counts, setCounts] = useState({})
   const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10))
   const [isSaving, setIsSaving] = useState(false)
@@ -1440,21 +1364,17 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
 
     return products
       .filter((product) => {
-        const isChecked = isProductChecked(product.id)
         const matchesCategory = category === 'all' || product.category === category
         const matchesQuery = [product.name, product.category, product.sku]
           .join(' ')
           .toLowerCase()
           .includes(lowered)
-        const matchesStatus =
-          checkFilter === 'all' ||
-          (checkFilter === 'checked' && isChecked) ||
-          (checkFilter === 'unchecked' && !isChecked)
+        const matchesUpdatedAt = isProductInUpdatedAtFilter(product, updatedAtFilter)
 
-        return matchesCategory && matchesQuery && matchesStatus
+        return matchesCategory && matchesQuery && matchesUpdatedAt
       })
       .sort((a, b) => Number(isProductChecked(a.id)) - Number(isProductChecked(b.id)))
-  }, [category, checkFilter, counts, products, query])
+  }, [category, counts, products, query, updatedAtFilter])
   const progressProducts = useMemo(() => {
     const lowered = query.toLowerCase().trim()
 
@@ -1646,25 +1566,27 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
             {category === 'all' ? 'All categories' : category} · {visibleProducts.length}{' '}
             products
           </p>
-          <div className="grid grid-cols-3 gap-1">
-            {[
-              ['all', 'Show All'],
-              ['checked', 'Checked Only'],
-              ['unchecked', 'Unchecked Only'],
-            ].map(([value, label]) => (
-              <button
-                className={`h-9 rounded-xl px-2 text-[11px] font-bold transition ${
-                  checkFilter === value
-                    ? 'bg-zinc-950 text-white shadow-sm'
-                    : 'bg-white text-zinc-600 ring-1 ring-zinc-200'
-                }`}
-                key={value}
-                onClick={() => setCheckFilter(value)}
-                type="button"
-              >
-                {label}
-              </button>
-            ))}
+          <div className="col-span-2 -mx-1 overflow-x-auto px-1 pb-1">
+            <div className="flex min-w-max gap-1.5">
+              {[
+                ['all', 'All'],
+                ['10days', 'Last 10 Days'],
+                ['20days', 'Last 20 Days'],
+                ['30days', 'Last 30 Days'],
+              ].map(([value, label]) => (
+                <button
+                  className={`stock-age-filter-chip ${
+                    updatedAtFilter === value ? `active filter-${value}` : ''
+                  }`}
+                  key={value}
+                  onClick={() => setUpdatedAtFilter(value)}
+                  type="button"
+                >
+                  <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1780,13 +1702,9 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
   return (
     <article className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-[14px] bg-white/75 px-2 py-1.5 shadow-sm ring-1 ring-white/80">
       <div className="flex min-w-0 items-start gap-1.5">
-        {isSaved ? (
-          <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-emerald-600 text-white">
-            <CheckIcon className="h-3 w-3" />
-          </span>
-        ) : (
-          <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-zinc-300 bg-white" />
-        )}
+        <span className={`product-status-dot ${updatedAtState}`}>
+          {isSaved && <CheckIcon className="h-2.5 w-2.5" />}
+        </span>
 
         <div className="min-w-0">
           <p className="truncate text-[12px] font-bold leading-tight">{product.name}</p>
@@ -1794,7 +1712,7 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
             Current Stock: {systemQty}
           </p>
           <p className={`product-updated ${updatedAtState}`}>
-            Last updated: {lastUpdatedLabel}
+            {lastUpdatedLabel}
           </p>
         </div>
       </div>
@@ -3030,7 +2948,10 @@ function ProductModal({ categories, product, onClose, onSave }) {
 function BottomNav({ activePage, items, onChange }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 px-2.5 pb-[calc(env(safe-area-inset-bottom)+0.4rem)]">
-      <div className="mx-auto grid max-w-lg grid-cols-6 gap-0.5 rounded-[20px] border border-white/70 bg-white/78 p-1 shadow-[0_12px_34px_rgba(24,24,27,0.16)] backdrop-blur-2xl">
+      <div
+        className="mx-auto grid max-w-lg gap-0.5 rounded-[20px] border border-white/70 bg-white/78 p-1 shadow-[0_12px_34px_rgba(24,24,27,0.16)] backdrop-blur-2xl"
+        style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+      >
         {items.map((item) => {
           const Icon = item.icon
           const isActive = activePage === item.id
@@ -3087,22 +3008,6 @@ function MetricCard({ icon: Icon, label, onClick, tone = 'zinc', value }) {
         {value}
       </div>
     </Component>
-  )
-}
-
-function ProductThumbnail({ name }) {
-  const initials = name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-
-  return (
-    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[18px] bg-zinc-950 text-xs font-bold text-white shadow-sm">
-      {initials || 'DS'}
-    </div>
   )
 }
 
@@ -3675,57 +3580,6 @@ function getDateOffset(date, offsetDays) {
   return nextDate.toISOString().slice(0, 10)
 }
 
-function buildMetrics(products, movements = []) {
-  const stockMetrics = products.reduce(
-    (totals, product) => {
-      const stock = Number(product.stockQty) || 0
-      const cost = Number(product.costPrice) || 0
-      const selling = Number(product.sellingPrice) || 0
-
-      totals.totalProducts += 1
-      totals.totalQuantity += stock
-      totals.totalCostValue += cost * stock
-      totals.totalSellingValue += selling * stock
-      totals.estimatedProfit += (selling - cost) * stock
-      if (stock <= Number(product.minimumStock)) totals.lowStockCount += 1
-
-      return totals
-    },
-    {
-      totalProducts: 0,
-      totalQuantity: 0,
-      totalCostValue: 0,
-      totalSellingValue: 0,
-      estimatedProfit: 0,
-      lowStockCount: 0,
-    },
-  )
-  const latestCheckDate = movements
-    .filter((movement) => movement.type === 'stock-check' && movement.date)
-    .sort((a, b) => new Date(b.date) - new Date(a.date))[0]?.date
-
-  const todayMetrics = movements.reduce(
-    (totals, movement) => {
-      if (movement.type !== 'stock-check' || movement.date !== latestCheckDate) return totals
-
-      totals.lastCheckMovement += Number(movement.soldQty) || 0
-      totals.lastCheckRevenueValue += Number(movement.salesValue) || 0
-      totals.lastCheckProfit += Number(movement.profit) || 0
-      return totals
-    },
-    {
-      lastCheckProfit: 0,
-      lastCheckRevenueValue: 0,
-      lastCheckMovement: 0,
-    },
-  )
-
-  return {
-    ...stockMetrics,
-    ...todayMetrics,
-  }
-}
-
 function normalizeProduct(product) {
   return {
     ...product,
@@ -3773,31 +3627,183 @@ function formatBackupTimestamp(value) {
 }
 
 function formatProductUpdatedAt(value) {
-  if (!value) return 'Not updated yet'
-
-  const date = parseTimestamp(value)
-  if (!date) return 'Not updated yet'
-
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    hour: 'numeric',
-    hour12: true,
-    minute: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
-    .format(date)
-    .replace(/\b(am|pm)\b/i, (period) => period.toUpperCase())
+  const daysOld = getProductUpdatedDaysOld(value)
+  if (daysOld === null) return 'Not updated yet'
+  if (daysOld === 0) return 'Updated today'
+  if (daysOld === 1) return 'Last updated: 1 day ago'
+  return `Last updated: ${daysOld} days ago`
 }
 
 function getProductUpdatedAtState(value) {
-  const date = parseTimestamp(value)
-  if (!date) return 'default'
-
-  const daysOld = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
-  if (daysOld <= 7) return 'fresh'
-  if (daysOld > 7 && daysOld <= 14) return 'warning'
+  const daysOld = getProductUpdatedDaysOld(value)
+  if (daysOld === null) return 'default'
+  if (daysOld < 10) return 'fresh'
+  if (daysOld >= 10 && daysOld <= 20) return 'warning'
   return 'expired'
+}
+
+function isProductInUpdatedAtFilter(product, activeFilter) {
+  const daysOld = getProductUpdatedDaysOld(product.updatedAt)
+
+  if (activeFilter === 'all') return true
+  if (activeFilter === '10days') return daysOld !== null && daysOld <= 10
+  if (activeFilter === '20days') return daysOld !== null && daysOld > 10 && daysOld <= 20
+  if (activeFilter === '30days') return daysOld !== null && daysOld > 20 && daysOld <= 30
+  return true
+}
+
+function buildDashboardSummary({ products, stockChecks, stockInRecords }) {
+  const productsById = new Map(products.map((product) => [product.id, product]))
+  const productValues = products.map((product) => {
+    const currentStock = getProductCurrentStock(product)
+    const costPrice = Number(product.costPrice) || 0
+
+    return {
+      id: product.id,
+      name: product.name,
+      stockValue: currentStock * costPrice,
+    }
+  })
+  const totals = productValues.reduce(
+    (current, item) => {
+      current.totalStockValue += item.stockValue
+      return current
+    },
+    {
+      totalProducts: products.length,
+      totalStockQty: products.reduce((total, product) => total + getProductCurrentStock(product), 0),
+      totalStockValue: 0,
+    },
+  )
+  const windows = {
+    last10Days: { inValue: 0, outValue: 0 },
+    thisMonth: { inValue: 0, outValue: 0 },
+  }
+
+  getStockValueEntries({ productsById, stockChecks, stockInRecords }).forEach((entry) => {
+    if (isWithinLastDays(entry.timestamp, 10)) {
+      if (entry.quantityChange > 0) {
+        windows.last10Days.inValue += entry.value
+      } else {
+        windows.last10Days.outValue += entry.value
+      }
+    }
+
+    if (isCurrentMonth(entry.timestamp)) {
+      if (entry.quantityChange > 0) {
+        windows.thisMonth.inValue += entry.value
+      } else {
+        windows.thisMonth.outValue += entry.value
+      }
+    }
+  })
+
+  return {
+    ...totals,
+    ...windows,
+    recentEntries: getStockValueEntries({ productsById, stockChecks, stockInRecords })
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 20),
+    topValueProducts: productValues
+      .filter((product) => product.stockValue > 0)
+      .sort((a, b) => b.stockValue - a.stockValue)
+      .slice(0, 5),
+  }
+}
+
+function getStockValueEntries({ productsById, stockChecks, stockInRecords }) {
+  const stockInEntries = stockInRecords.map((record) => {
+    const product = productsById.get(record.productId)
+    const quantityChange = Number(record.quantityAdded) || 0
+    const costPrice = Number(record.purchaseCost ?? record.price ?? product?.costPrice) || 0
+    const timestamp = getStockEntryTimestamp(record)
+
+    return {
+      action: 'Stock In',
+      currentStock: getProductCurrentStock(product || {}),
+      id: `stock-in-${record.id}`,
+      productName: record.productName || product?.name || 'Unknown product',
+      quantityChange,
+      timestamp,
+      updatedLabel: formatDashboardEntryUpdatedAt(timestamp),
+      updatedState: getDashboardEntryUpdatedState(timestamp),
+      value: Math.abs(quantityChange) * costPrice,
+    }
+  })
+  const stockCheckEntries = stockChecks.map((record) => {
+    const product = productsById.get(record.productId)
+    const previousStock = Number(record.systemQty ?? record.previousStock) || 0
+    const countedStock = Number(record.countedStock ?? record.physicalQty) || 0
+    const quantityChange = countedStock - previousStock
+    const costPrice = Number(record.costPrice ?? product?.costPrice) || 0
+    const timestamp = getStockEntryTimestamp(record)
+
+    return {
+      action: quantityChange > 0 ? 'Stock In' : 'Stock Out',
+      currentStock: countedStock,
+      id: `stock-check-${record.id}`,
+      productName: record.productName || product?.name || 'Unknown product',
+      quantityChange,
+      timestamp,
+      updatedLabel: formatDashboardEntryUpdatedAt(timestamp),
+      updatedState: getDashboardEntryUpdatedState(timestamp),
+      value: Math.abs(quantityChange) * costPrice,
+    }
+  })
+
+  return [...stockInEntries, ...stockCheckEntries].filter(
+    (entry) => entry.quantityChange !== 0 && entry.timestamp.getTime() > 0,
+  )
+}
+
+function getProductCurrentStock(product) {
+  return Number(product.currentStock ?? product.stockQty) || 0
+}
+
+function isWithinLastDays(value, days) {
+  const date = parseTimestamp(value)
+  if (!date) return false
+  return Date.now() - date.getTime() <= days * 24 * 60 * 60 * 1000
+}
+
+function isCurrentMonth(value) {
+  const date = parseTimestamp(value)
+  const now = new Date()
+  if (!date) return false
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()
+}
+
+function getStockEntryTimestamp(record) {
+  return (
+    parseTimestamp(record.updatedAt) ||
+    parseTimestamp(record.createdAt) ||
+    parseTimestamp(record.checkedAt) ||
+    parseTimestamp(record.savedAt) ||
+    parseTimestamp(record.date) ||
+    new Date(0)
+  )
+}
+
+function formatDashboardEntryUpdatedAt(value) {
+  const daysOld = getProductUpdatedDaysOld(value)
+  if (daysOld === null) return 'No date'
+  if (daysOld === 0) return 'Updated today'
+  if (daysOld === 1) return '1 day ago'
+  return `${daysOld} days ago`
+}
+
+function getDashboardEntryUpdatedState(value) {
+  const daysOld = getProductUpdatedDaysOld(value)
+  if (daysOld === null) return 'default'
+  if (daysOld < 10) return 'fresh'
+  if (daysOld >= 10 && daysOld <= 20) return 'warning'
+  return 'expired'
+}
+
+function getProductUpdatedDaysOld(value) {
+  const date = parseTimestamp(value)
+  if (!date) return null
+  return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 function parseTimestamp(value) {
@@ -3867,16 +3873,6 @@ function getGreeting() {
   return 'Good evening'
 }
 
-function PackageCheckIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="m21 8-9-5-9 5 9 5 9-5Z" />
-      <path d="M3 8v8l9 5 9-5V8M12 13v8" />
-      <path d="m16.5 14.5 1.5 1.5 3-3" />
-    </svg>
-  )
-}
-
 function LayersIcon(props) {
   return (
     <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
@@ -3893,6 +3889,32 @@ function WalletIcon(props) {
       <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z" />
       <path d="M4 8h16" />
       <path d="M16 13h2" />
+    </svg>
+  )
+}
+
+function StarIcon(props) {
+  return (
+    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
+      <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+    </svg>
+  )
+}
+
+function ArrowUpIcon(props) {
+  return (
+    <svg fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" {...props}>
+      <path d="M12 19V5" />
+      <path d="m6 11 6-6 6 6" />
+    </svg>
+  )
+}
+
+function ArrowDownIcon(props) {
+  return (
+    <svg fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" {...props}>
+      <path d="M12 5v14" />
+      <path d="m18 13-6 6-6-6" />
     </svg>
   )
 }
@@ -3986,6 +4008,18 @@ function SearchIcon(props) {
     <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
       <path d="m21 21-4.35-4.35" />
       <circle cx="11" cy="11" r="7" />
+    </svg>
+  )
+}
+
+function CalendarIcon(props) {
+  return (
+    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
+      <path d="M7 3v4" />
+      <path d="M17 3v4" />
+      <path d="M4 8h16" />
+      <path d="M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+      <path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01" />
     </svg>
   )
 }
