@@ -879,7 +879,7 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2">
         <DashboardBox
           icon={BoxIcon}
           iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
@@ -917,11 +917,11 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
             <div className="space-y-1.5">
               {summary.topValueProducts.map((product, index) => (
                 <div
-                  className="grid grid-cols-[24px_1fr_auto] items-center gap-1.5"
+                  className="grid grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-1.5 leading-[1.1]"
                   key={product.id}
                 >
                   <span
-                    className={`grid h-6 w-6 place-items-center rounded-lg text-[10px] font-bold ${
+                    className={`grid h-[18px] w-[18px] place-items-center rounded-md text-[9px] font-bold ${
                       index < 4
                         ? 'bg-amber-50 text-amber-700'
                         : 'bg-zinc-100 text-zinc-600'
@@ -929,10 +929,10 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
                   >
                     {index + 1}
                   </span>
-                  <p className="min-w-0 truncate text-[11px] font-bold text-zinc-950">
+                  <p className="max-w-[85px] truncate text-[10px] font-bold text-zinc-950">
                     {product.name}
                   </p>
-                  <p className="shrink-0 text-[11px] font-bold text-zinc-950">
+                  <p className="shrink-0 text-right text-[10px] font-bold text-zinc-950">
                     {formatRM(product.stockValue)}
                   </p>
                 </div>
@@ -997,16 +997,16 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
 
 function DashboardBox({ children, icon: Icon, iconClassName, title }) {
   return (
-    <section className="min-h-[184px] rounded-[16px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200 sm:min-h-[220px]">
-      <div className="flex items-center gap-2">
-        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ring-1 ${iconClassName}`}>
-          <Icon className="h-[18px] w-[18px]" />
+    <section className="dashboard-card rounded-[16px] bg-white p-2.5 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
+      <div className="flex items-center gap-1.5">
+        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ring-1 ${iconClassName}`}>
+          <Icon className="h-3.5 w-3.5" />
         </span>
-        <h3 className="text-[13px] font-bold leading-tight tracking-tight text-zinc-950">
+        <h3 className="text-[12px] font-bold leading-tight tracking-tight text-zinc-950">
           {title}
         </h3>
       </div>
-      <div className="mt-2.5 space-y-1.5">{children}</div>
+      <div className="mt-2 space-y-1.5">{children}</div>
     </section>
   )
 }
@@ -1020,21 +1020,23 @@ function DashboardStatRow({
   valueClassName,
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-[14px] bg-white px-2 py-2 shadow-sm ring-1 ring-zinc-100">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-xl ${iconClassName}`}>
-          <Icon className="h-3.5 w-3.5" />
+    <div className="mb-1.5 flex items-center justify-between gap-1.5 rounded-[12px] bg-white px-2.5 py-2 shadow-sm ring-1 ring-zinc-100 last:mb-0">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ${iconClassName}`}>
+          <Icon className="h-4 w-4" />
         </span>
-        <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold text-zinc-800">{label}</p>
+        <div className="min-w-0 max-w-[70px]">
+          <p className="dashboard-label">
+            {label}
+          </p>
           {sublabel && (
-            <p className="mt-0.5 truncate text-[10px] font-semibold text-zinc-500">
+            <p className="summary-label mt-0.5 text-zinc-500">
               {sublabel}
             </p>
           )}
         </div>
       </div>
-      <p className={`shrink-0 text-right text-lg font-bold leading-tight ${valueClassName}`}>
+      <p className={`dashboard-value min-w-0 shrink text-right ${valueClassName}`}>
         {value}
       </p>
     </div>

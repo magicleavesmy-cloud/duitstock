@@ -78,6 +78,27 @@
     @apply h-9 w-full rounded-xl border border-white/70 bg-white/78 px-3 text-xs text-zinc-950 shadow-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-4 focus:ring-zinc-200;
   }
 
+  .dashboard-card {
+    overflow: hidden;
+  }
+
+  .dashboard-value,
+  .card-value,
+  .summary-value {
+    white-space: nowrap;
+    font-size: clamp(11px, 3vw, 15px);
+    line-height: 1;
+    font-weight: 700;
+  }
+
+  .dashboard-label,
+  .summary-label {
+    white-space: normal;
+    font-size: 10px;
+    line-height: 1.1;
+    font-weight: 600;
+  }
+
   .product-status-dot {
     display: grid;
     width: 14px;
