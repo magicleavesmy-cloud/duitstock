@@ -696,7 +696,7 @@ function App() {
 
   return (
     <div className="app-background min-h-screen text-zinc-950">
-      <div className={`app-shell mx-auto flex min-h-screen w-full max-w-6xl flex-col px-2 pb-20 pt-2.5 sm:px-3 sm:pt-4 lg:px-5 ${visibleActivePage === 'dashboard' ? 'dashboard-shell' : ''}`}>
+      <div className={`app-shell mx-auto flex min-h-screen w-full max-w-6xl flex-col px-2 pb-28 pt-2.5 sm:px-3 sm:pt-4 lg:px-5 ${visibleActivePage === 'dashboard' ? 'dashboard-shell' : ''}`}>
         <Header
           activePage={visibleActivePage}
           currentUserRole={currentUserRole}
