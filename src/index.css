@@ -674,3 +674,44 @@ html, body, * {
 .rounded-\[16px\].bg-zinc-50 {
   border: 1px solid rgba(210,175,120,0.28) !important;
 }
+
+/* Match shell background to page — no visible edge */
+.app-shell {
+  background: #F7F2EA !important;
+}
+
+.app-background {
+  background: #F7F2EA !important;
+}
+
+/* Cards — shadows only, no borders */
+.dashboard-card,
+.most-value-card,
+.dashboard-stock-entries,
+section.dashboard-card,
+.rounded-\[20px\].bg-white,
+.rounded-\[18px\].bg-white {
+  border: none !important;
+}
+
+/* Remove app shell border/shadow */
+.app-shell,
+.app-shell > * {
+  border: none !important;
+  outline: none !important;
+}
+
+/* Page content wrapper */
+.dashboard-page,
+.dashboard-shell {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove all background contrast edges */
+html, body, #root, .app-background, .app-shell, .dashboard-shell {
+  background: #F7F2EA !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
