@@ -1,58 +1,23 @@
-export function DashboardBox({
-  accent,
-  children,
-  className = '',
-  headerAction,
-  icon: Icon,
-  iconClassName,
-  title,
-}) {
+export function DashboardBox({ accent, children, className = '', headerAction, icon: Icon, iconClassName, title }) {
   return (
     <section className={`dashboard-card dashboard-card-${accent} ${className}`.trim()}>
-      <div className="dashboard-card-header flex items-center gap-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ring-1 ${iconClassName}`}>
-            <Icon className="h-3.5 w-3.5" />
-          </span>
-          <h3 className="truncate text-[12px] font-bold leading-tight tracking-tight">
-            {title}
-          </h3>
-        </div>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+        <span className={iconClassName} style={{ display:'grid', width:20, height:20, placeItems:'center', borderRadius:8, flexShrink:0 }}>
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <h3 style={{ fontSize:12, fontWeight:700, color:'#3B2A1A', margin:0, flex:1 }}>{title}</h3>
         {headerAction}
       </div>
-      <div className="mt-2 space-y-1.5">{children}</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>{children}</div>
     </section>
   )
 }
 
-export function DashboardStatRow({
-  icon: Icon,
-  iconClassName,
-  label,
-  sublabel,
-  value,
-  valueClassName,
-}) {
+export function DashboardStatRow({ label, value, valueClassName }) {
   return (
-    <div className="dashboard-card-item rounded-[12px] shadow-sm ring-1">
-      <div className="flex min-w-0 items-start gap-1.5">
-        <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-lg ${iconClassName}`}>
-          <Icon className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="dashboard-label">
-            {label}
-          </p>
-          {sublabel && (
-            <p className="summary-label mt-0.5">
-              {sublabel}
-            </p>
-          )}
-        </div>
-      </div>
-      <p className={`dashboard-value ${valueClassName}`}>
-        {value}
-      </p>
+    <div className="dashboard-card-item" style={{ borderRadius:12, padding:'8px 12px', minWidth:0 }}>
+      <p style={{ fontSize:9, fontWeight:600, color:'#7A6250', margin:'0 0 3px 0' }}>{label}</p>
+      <p className={valueClassName} style={{ fontSize:13, fontWeight:800, margin:0 }}>{value}</p>
     </div>
   )
 }

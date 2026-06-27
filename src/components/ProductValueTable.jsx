@@ -24,15 +24,10 @@ export default function ProductValueTable({
         <div
           className="product-value-scroll"
           style={{
-            background: '#F0E8DC',
-            border: '1px solid rgba(210, 175, 120, 0.35)',
-            borderRadius: 14,
-            boxShadow:
-              'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
-            maxHeight: 476,
-            overflowX: 'hidden',
-            overflowY: 'auto',
-            scrollbarWidth: 'thin',
+            background: '#FFFFFF',
+            border: '1px solid #ECE7DF',
+            borderRadius: 12,
+            boxShadow: 'none',
             width: '100%',
           }}
         >
@@ -43,11 +38,11 @@ export default function ProductValueTable({
               }
 
               .product-value-scroll::-webkit-scrollbar-track {
-                background: #F0E8DC;
+                background: #F6F3EE;
               }
 
               .product-value-scroll::-webkit-scrollbar-thumb {
-                background: #C8893A;
+                background: #C88B4A;
                 border-radius: 999px;
               }
             `}
@@ -60,24 +55,22 @@ export default function ProductValueTable({
             }}
           >
             <colgroup>
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '42%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '45%' }} />
               <col style={{ width: '14%' }} />
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '13%' }} />
+              <col style={{ width: '27%' }} />
             </colgroup>
             <thead>
-              <tr style={{ height: 36 }}>
+              <tr style={{ height: 34 }}>
                 <HeaderCell>#</HeaderCell>
                 <HeaderCell>Product</HeaderCell>
                 <HeaderCell align="right">Qty</HeaderCell>
                 <HeaderCell align="right">Value</HeaderCell>
-                <HeaderCell align="right" style={{ minWidth: 60 }}>Trend</HeaderCell>
               </tr>
             </thead>
             <tbody>
               {products.map((product, index) => (
-                <tr key={product.id} style={{ height: 44, verticalAlign: 'middle' }}>
+                <tr key={product.id} style={{ height: 46, verticalAlign: 'middle' }}>
                   <td style={rankCellStyle}>
                     <span className="most-value-rank">
                       {index + 1}
@@ -92,9 +85,6 @@ export default function ProductValueTable({
                   <td style={valueCellStyle}>
                     {formatRM(product.stockValue)}
                   </td>
-                  <td style={trendCellStyle}>
-                    <ProductTrend trend={product.trend} />
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -108,46 +98,46 @@ export default function ProductValueTable({
 }
 
 const baseCellStyle = {
-  borderTop: '1px solid rgba(210, 175, 120, 0.35)',
+  borderTop: '1px solid #ECE7DF',
   opacity: 1,
   verticalAlign: 'middle',
 }
 
 const rankCellStyle = {
   ...baseCellStyle,
-  padding: '8px 3px 8px 5px',
+  padding: '9px 4px 9px 6px',
 }
 
 const productCellStyle = {
   ...baseCellStyle,
-  color: '#3B2A1A',
-  fontSize: 11,
-  fontWeight: 500,
-  letterSpacing: '-0.1px',
+  color: '#18181B',
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: 0,
   maxWidth: 130,
   overflow: 'hidden',
-  padding: '8px 6px',
+  padding: '9px 7px',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 }
 
 const qtyCellStyle = {
   ...baseCellStyle,
-  color: '#5D8A52',
+  color: '#18181B',
   fontSize: 12,
   fontWeight: 700,
-  padding: '8px 6px',
+  padding: '9px 7px',
   textAlign: 'right',
   whiteSpace: 'nowrap',
 }
 
 const valueCellStyle = {
   ...baseCellStyle,
-  color: '#C8893A',
+  color: '#18181B',
   fontSize: 12,
   fontWeight: 800,
   opacity: 1,
-  padding: '8px 6px',
+  padding: '9px 7px',
   textAlign: 'right',
   whiteSpace: 'nowrap',
 }
@@ -157,7 +147,7 @@ const trendCellStyle = {
   fontSize: 10,
   fontWeight: 700,
   minWidth: 60,
-  padding: '8px 6px 8px 2px',
+  padding: '9px 7px 9px 2px',
   textAlign: 'right',
   whiteSpace: 'nowrap',
 }
@@ -166,12 +156,12 @@ function HeaderCell({ align = 'left', children, style = {} }) {
   return (
     <th
       style={{
-        background: '#F0E8DC',
-        color: '#7A6250',
-        fontSize: 8,
+        background: '#F6F3EE',
+        color: '#71717A',
+        fontSize: 9,
         fontWeight: 800,
         opacity: 1,
-        padding: align === 'right' ? '8px 6px' : '8px 5px',
+        padding: align === 'right' ? '8px 7px' : '8px 6px',
         position: 'sticky',
         textAlign: align,
         textTransform: 'uppercase',
@@ -204,9 +194,9 @@ function ProductTrend({ trend }) {
 
 function getTrendStyle(direction) {
   const colors = {
-    down: '#B85C4A',
-    flat: '#B09A85',
-    up: '#5D8A52',
+    down: '#DC2626',
+    flat: '#71717A',
+    up: '#16A34A',
   }
 
   return {

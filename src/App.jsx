@@ -26,6 +26,7 @@ import {
   CheckIcon,
   CloseIcon,
   DashboardIcon,
+  PencilIcon,
   PlusBoxIcon,
   ProfitIcon,
   SaveIcon,
@@ -557,6 +558,89 @@ function App() {
     return true
   }
 
+  async function updateStockInRecord(record, quantityValue) {
+    if (!record?.id) {
+      showError('Stock in record was not found.')
+      return false
+    }
+
+    const nextQuantity = Number(quantityValue) || 0
+    if (nextQuantity <= 0) {
+      showError('Quantity must be more than zero.')
+      return false
+    }
+
+    const product = products.find((item) => item.id === record.productId)
+
+    if (!product) {
+      showError('Product was not found. Please refresh and try again.')
+      return false
+    }
+
+    const previousQuantity = Number(record.quantityAdded) || 0
+    const quantityDelta = nextQuantity - previousQuantity
+    const purchaseCost =
+      Number(record.purchaseCost ?? record.price) || Number(product.costPrice) || 0
+    const amount = nextQuantity * purchaseCost
+    const updatedAt = new Date().toISOString()
+
+    setActionError('')
+
+    if (isCloudEnabled) {
+      try {
+        const batch = writeBatch(db)
+
+        batch.set(
+          doc(db, 'stockInRecords', record.id),
+          {
+            amount,
+            price: purchaseCost,
+            purchaseCost,
+            quantityAdded: nextQuantity,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
+        batch.set(
+          doc(db, 'products', record.productId),
+          {
+            stockQty: increment(quantityDelta),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
+        await batch.commit()
+      } catch {
+        showError('Stock in record could not be updated in Firestore.')
+        return false
+      }
+    }
+
+    setStockInRecords((current) =>
+      current.map((item) =>
+        item.id === record.id
+          ? {
+              ...item,
+              amount,
+              price: purchaseCost,
+              purchaseCost,
+              quantityAdded: nextQuantity,
+              updatedAt,
+            }
+          : item,
+      ),
+    )
+    setProducts((current) =>
+      current.map((item) =>
+        item.id === record.productId
+          ? { ...item, stockQty: (Number(item.stockQty) || 0) + quantityDelta }
+          : item,
+      ),
+    )
+    showToast('success', 'Stock in record updated.')
+    return true
+  }
+
   async function clearAllData() {
     if (!isAdmin) {
       showError('Only admin can clear data.')
@@ -755,6 +839,7 @@ function App() {
                   stockInRecords={stockInRecords}
                   onDeleteRecord={deleteStockInRecord}
                   onSave={saveStockIn}
+                  onUpdateRecord={updateStockInRecord}
                 />
               )}
               {isAdmin && visibleActivePage === 'reports' && (
@@ -857,15 +942,6 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
 
   return (
     <section className="dashboard-page space-y-2.5">
-      <div>
-        <h2 className="text-base font-semibold tracking-tight text-zinc-950 sm:text-lg">
-          <span className="dashboard-brand-word">DuitStock</span> Dashboard
-        </h2>
-        <p className="mt-0.5 text-xs font-semibold text-zinc-500">
-          Read-only stock summary.
-        </p>
-      </div>
-
       <StockOverview formatRM={formatRM} summary={summary} />
       <SummarySection formatRM={formatRM} summary={summary} />
       <ProductValueTable
@@ -880,85 +956,81 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
 }
 
 const productGlassControlStyle = {
-  background: '#F0E8DC',
-  border: '1px solid rgba(210,175,120,0.35)',
-  borderRadius: '12px',
-  color: '#3B2A1A',
-  boxShadow:
-    'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
+  background: '#FFFFFF',
+  border: '1px solid #ECE7DF',
+  borderRadius: '10px',
+  color: '#18181B',
+  boxShadow: 'none',
 }
 
 const productLowStockStyle = (active) => ({
-  height: '38px',
+  height: '44px',
   borderRadius: '10px',
   border: active
-    ? '1px solid rgba(200,137,58,0.38)'
-    : '1px solid rgba(210,175,120,0.35)',
-  background: active ? 'rgba(200,137,58,0.16)' : '#F0E8DC',
-  color: active ? '#C8893A' : '#7A6250',
+    ? '1px solid rgba(200,139,74,0.22)'
+    : '1px solid #ECE7DF',
+  background: active ? 'rgba(200,139,74,0.12)' : '#FFFFFF',
+  color: active ? '#C88B4A' : '#71717A',
   fontSize: '13px',
-  fontWeight: 800,
-  boxShadow: active
-    ? 'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)'
-    : '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
+  fontWeight: 700,
+  boxShadow: 'none',
 })
 
 const productAddButtonStyle = {
-  height: '42px',
+  height: '50px',
   borderRadius: '12px',
-  background: '#C8893A',
-  border: '1px solid rgba(200,137,58,0.45)',
-  boxShadow: '0 0 18px rgba(200,137,58,0.28)',
-  color: '#FCF8F3',
-  fontSize: '13px',
+  background: '#C88B4A',
+  border: '1px solid #C88B4A',
+  boxShadow: 'none',
+  color: '#FFFFFF',
+  fontSize: '14px',
   fontWeight: 800,
 }
 
 const productListCardStyle = {
-  minHeight: '68px',
+  minHeight: '72px',
   borderRadius: '16px',
-  border: '1px solid rgba(210,175,120,0.35)',
-  background: '#FCF8F3',
-  padding: '12px',
+  border: '1px solid #ECE7DF',
+  background: '#FFFFFF',
+  padding: '14px',
   marginBottom: '4px',
   width: '100%',
   boxSizing: 'border-box',
   overflow: 'hidden',
-  boxShadow:
-    '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
+  boxShadow: '0 1px 2px rgba(24,24,27,0.04)',
 }
 
 const productStockBadgeStyle = {
   borderRadius: '999px',
-  background: 'rgba(93,138,82,0.13)',
-  border: '1px solid rgba(93,138,82,0.28)',
-  color: '#5D8A52',
-  padding: '6px 10px',
-  fontSize: '11px',
-  fontWeight: 800,
+  background: 'rgba(22,163,74,0.08)',
+  border: '1px solid rgba(22,163,74,0.16)',
+  color: '#16A34A',
+  padding: '8px 12px',
+  fontSize: '12px',
+  fontWeight: 700,
   lineHeight: 1,
-  boxShadow:
-    'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
+  boxShadow: 'none',
 }
 
 const productActionStyle = (tone = 'neutral') => {
   const tones = {
-    orange: ['#C8893A', 'rgba(200,137,58,0.45)', '#FCF8F3'],
-    neutral: ['#F0E8DC', 'rgba(210,175,120,0.35)', '#7A6250'],
-    danger: ['rgba(184,92,74,0.12)', 'rgba(184,92,74,0.24)', '#B85C4A'],
+    orange: ['#C88B4A', '#C88B4A', '#FFFFFF'],
+    neutral: ['#FFFFFF', '#ECE7DF', '#71717A'],
+    danger: ['rgba(220,38,38,0.08)', 'rgba(220,38,38,0.16)', '#DC2626'],
   }
   const [background, border, color] = tones[tone]
 
   const isOrange = tone === 'orange'
   if (isOrange) {
     return {
-      height: '34px',
+      height: '38px',
+      minWidth: '80px',
       borderRadius: '10px',
-      background: '#C8893A',
-      border: '1px solid rgba(200,137,58,0.45)',
-      boxShadow: '0 0 18px rgba(200,137,58,0.28)',
-      color: '#FCF8F3',
-      fontSize: '11px',
+      background: '#C88B4A',
+      border: '1px solid #C88B4A',
+      boxShadow: 'none',
+      color: '#FFFFFF',
+      fontSize: '12px',
       fontWeight: 700,
       lineHeight: 1,
       padding: '0 14px',
@@ -1020,17 +1092,17 @@ function ProductsPage({
           <span className="sr-only">Search products</span>
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-main)]/45" />
           <input
-            className="w-full text-xs font-semibold outline-none transition placeholder:text-[var(--text-main)]/40 focus:ring-4 focus:ring-orange-400/15"
+            className="w-full text-[13px] font-semibold outline-none transition placeholder:text-[var(--text-main)]/40 focus:ring-4 focus:ring-orange-400/15"
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search products"
-            style={{ ...productGlassControlStyle, height: '42px', padding: '0 14px 0 36px' }}
+            style={{ ...productGlassControlStyle, height: '46px', padding: '0 14px 0 36px' }}
             value={query}
           />
         </label>
         <select
-          className="text-xs font-semibold outline-none transition focus:ring-4 focus:ring-orange-400/15"
+          className="text-[13px] font-semibold outline-none transition focus:ring-4 focus:ring-orange-400/15"
           onChange={(event) => setCategory(event.target.value)}
-          style={{ ...productGlassControlStyle, height: '40px', padding: '0 14px' }}
+          style={{ ...productGlassControlStyle, height: '44px', padding: '0 14px' }}
           value={category}
         >
           <option value="all">All categories</option>
@@ -1102,10 +1174,9 @@ function ProductsAdminHero({ summary }) {
     <div
       className="rounded-[18px] p-2.5"
       style={{
-        background: '#FCF8F3',
-        border: '1px solid rgba(210,175,120,0.35)',
-        boxShadow:
-          '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
+        background: '#FFFFFF',
+        border: '1px solid #ECE7DF',
+        boxShadow: '0 1px 2px rgba(24,24,27,0.04)',
       }}
     >
       <div className="grid grid-cols-3 gap-1.5">
@@ -1114,10 +1185,9 @@ function ProductsAdminHero({ summary }) {
             className="rounded-xl px-2 py-2"
             key={label}
             style={{
-              background: '#F0E8DC',
-              border: '1px solid rgba(210,175,120,0.35)',
-              boxShadow:
-                'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
+              background: '#F6F3EE',
+              border: '1px solid #ECE7DF',
+              boxShadow: 'none',
             }}
           >
             <p className="text-[9px] font-bold uppercase tracking-wide text-[var(--text-main)]/45">{label}</p>
@@ -1150,13 +1220,13 @@ function ProductCard({
       className="flex items-center justify-between gap-3"
       style={productListCardStyle}
     >
-      <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[13px] font-semibold leading-tight text-[var(--text-main)]/95">
+          <h2 className="text-[14px] font-bold leading-tight text-[var(--text-main)]/95">
             {title}
           </h2>
           {canViewCosts ? (
-            <div className="mt-1 space-y-0.5 text-[10px] font-medium leading-tight text-[var(--text-main)]/48">
+            <div className="mt-1 space-y-0.5 text-[11px] font-medium leading-tight text-[var(--text-main)]/48">
               <p className="truncate">
                 Cost {formatCompactRM(costPrice)} | Sell {formatCompactRM(sellingPrice)} | Margin{' '}
                 {formatCompactPercent(profitMargin)}
@@ -1167,13 +1237,13 @@ function ProductCard({
               </p>
             </div>
           ) : (
-            <p className="mt-1 truncate text-[10px] font-medium leading-tight text-[var(--text-main)]/48">
+            <p className="mt-1 truncate text-[11px] font-medium leading-tight text-[var(--text-main)]/48">
               Sell {formatCompactRM(sellingPrice)}
             </p>
           )}
         </div>
         <div className="flex shrink-0 flex-row items-center gap-2">
-          <span className="stock-badge shrink-0">
+          <span className="stock-badge shrink-0" style={productStockBadgeStyle}>
             Stock {Number(product.stockQty) || 0}
           </span>
           <div className="flex flex-wrap justify-end gap-1">
@@ -1236,6 +1306,21 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
 
     return byProduct
   }, [stockChecks, today])
+  const latestStockCheckByProduct = useMemo(() => {
+    const byProduct = new Map()
+
+    stockChecks
+      .filter((item) => item.productId)
+      .forEach((item) => {
+        const timestamp = getStockEntryTimestamp(item)
+        const current = byProduct.get(item.productId)
+
+        if (current && current >= timestamp) return
+        byProduct.set(item.productId, timestamp)
+      })
+
+    return byProduct
+  }, [stockChecks])
 
   useEffect(() => {
     setCounts((current) => {
@@ -1503,6 +1588,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
                 onEnter={focusNextInput}
                 onSave={saveProductCount}
                 product={product}
+                stockCheckUpdatedAt={latestStockCheckByProduct.get(product.id)}
               />
             ))}
           </div>
@@ -1517,7 +1603,10 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
       </form>
 
       <div className="rounded-[20px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className="flex items-center gap-3"
+          style={{ display: 'flex', justifyContent: 'space-between' }}
+        >
           <div>
             <h2 className="text-base font-semibold">Stock check history</h2>
             {canViewProfit && (
@@ -1577,7 +1666,15 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
   )
 }
 
-function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) {
+function StockCheckRow({
+  count,
+  isSaving,
+  onChange,
+  onEnter,
+  onSave,
+  product,
+  stockCheckUpdatedAt,
+}) {
   const displayQty = count.displayQty ?? ''
   const storeQty = count.storeQty ?? ''
   const hasEntry = displayQty !== '' || storeQty !== ''
@@ -1585,8 +1682,8 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
   const systemQty = Number(count.systemQty ?? product.stockQty) || 0
   const physicalQty = (Number(displayQty) || 0) + (Number(storeQty) || 0)
   const difference = physicalQty - systemQty
-  const lastUpdatedLabel = formatProductUpdatedAt(product.updatedAt)
-  const updatedAtState = getProductUpdatedAtState(product.updatedAt)
+  const lastUpdatedLabel = formatProductUpdatedAt(stockCheckUpdatedAt)
+  const updatedAtState = getProductUpdatedAtState(stockCheckUpdatedAt)
 
   return (
     <article className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-[14px] bg-white/75 px-2 py-1.5 shadow-sm ring-1 ring-white/80">
@@ -1601,7 +1698,7 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
             Current Stock:{' '}
             <span
               style={{
-                color: '#5D8A52',
+                color: '#16A34A',
                 textShadow: 'none',
               }}
             >
@@ -1867,7 +1964,7 @@ function DeadStockPanel({ days, items, summary, onDaysChange }) {
 
   return (
     <div className="rounded-[20px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">Sleeping Stock Alert</h2>
           <p className="mt-0.5 text-xs text-zinc-500">
@@ -2054,10 +2151,13 @@ function StockInHistoryPage({
   stockInRecords,
   onDeleteRecord,
   onSave,
+  onUpdateRecord,
 }) {
   const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10))
-  const [pendingDeleteRecord, setPendingDeleteRecord] = useState(null)
+  const [editingRecordId, setEditingRecordId] = useState('')
+  const [editQuantity, setEditQuantity] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const filteredRecords = stockInRecords.filter(
     (record) => getRecordDateValue(record) === filterDate,
   )
@@ -2065,6 +2165,30 @@ function StockInHistoryPage({
     (total, record) => total + (Number(record.quantityAdded) || 0),
     0,
   )
+
+  function startEditingRecord(record) {
+    setEditingRecordId(record.id)
+    setEditQuantity(String(Number(record.quantityAdded) || 0))
+  }
+
+  function cancelEditingRecord() {
+    setEditingRecordId('')
+    setEditQuantity('')
+  }
+
+  async function saveEditingRecord(record) {
+    setIsUpdating(true)
+    const didUpdate = await onUpdateRecord(record, editQuantity)
+    setIsUpdating(false)
+    if (didUpdate) cancelEditingRecord()
+  }
+
+  async function deleteEditingRecord(record) {
+    setIsDeleting(true)
+    const didDelete = await onDeleteRecord(record)
+    setIsDeleting(false)
+    if (didDelete) cancelEditingRecord()
+  }
 
   return (
     <section className="space-y-2.5">
@@ -2075,124 +2199,255 @@ function StockInHistoryPage({
       />
 
       <div className="rounded-[20px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold">Stock in history</h2>
-            <p className="mt-0.5 text-xs text-zinc-500">
+            <h2 className="text-lg font-semibold">Stock in history</h2>
+            <p className="mt-0.5 text-sm text-zinc-500">
               {totalAdded} units added on {formatDate(filterDate)}
             </p>
           </div>
-          <input
-            className="field-input sm:w-48"
-            onChange={(event) => setFilterDate(event.target.value)}
-            type="date"
-            value={filterDate}
-          />
+          <div
+            style={{
+              alignItems: 'center',
+              background: '#F0E8DC',
+              border: '1px solid rgba(210,175,120,0.35)',
+              borderRadius: 999,
+              display: 'inline-flex',
+              fontSize: 12,
+              gap: 8,
+              height: 32,
+              padding: '0 8px',
+            }}
+          >
+            <button
+              aria-label="Previous day"
+              onClick={() => {
+                const next = new Date(filterDate)
+                next.setDate(next.getDate() - 1)
+                setFilterDate(next.toISOString().slice(0, 10))
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#C8893A',
+                cursor: 'pointer',
+                fontSize: 16,
+                fontWeight: 900,
+                padding: '0 8px',
+              }}
+              type="button"
+            >
+              {'<'}
+            </button>
+            <span className="min-w-[98px] text-center font-bold text-zinc-800">
+              {formatDate(filterDate)}
+            </span>
+            <button
+              aria-label="Next day"
+              onClick={() => {
+                const next = new Date(filterDate)
+                next.setDate(next.getDate() + 1)
+                setFilterDate(next.toISOString().slice(0, 10))
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#C8893A',
+                cursor: 'pointer',
+                fontSize: 16,
+                fontWeight: 900,
+                padding: '0 8px',
+              }}
+              type="button"
+            >
+              {'>'}
+            </button>
+          </div>
         </div>
       </div>
 
       {filteredRecords.length ? (
         <div className="overflow-hidden rounded-[18px] bg-white shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
-          <div className="grid grid-cols-[74px_1fr_58px_32px] gap-2 bg-zinc-50 px-2.5 py-2 text-[10px] font-bold uppercase text-zinc-500">
-            <span>Date</span>
-            <span>Product</span>
-            <span className="text-right">Qty</span>
-            <span></span>
-          </div>
-          <div className="divide-y divide-zinc-100">
-            {filteredRecords.map((record) => (
-              <article className="px-2.5 py-2" key={record.id}>
-                <div className="grid grid-cols-[74px_1fr_58px_32px] items-center gap-2 text-xs">
-                  <p className="font-semibold text-zinc-500">
-                    {formatShortDate(record)}
-                  </p>
-                  <p className="min-w-0 truncate font-semibold text-zinc-950">
-                    {record.productName}
-                  </p>
-                  <p className="text-right text-sm font-bold text-emerald-700">
-                    +{Number(record.quantityAdded) || 0}
-                  </p>
-                  <button
-                    aria-label={`Delete stock in record for ${record.productName}`}
-                    className="grid h-8 w-8 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200"
-                    onClick={() => setPendingDeleteRecord(record)}
-                    type="button"
+          <table style={{ tableLayout: 'fixed', width: '100%' }}>
+            <colgroup>
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '36%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '6%' }} />
+            </colgroup>
+            <thead>
+              <tr
+                className="bg-zinc-50 uppercase"
+                style={{ color: '#B09A85', fontSize: 9, fontWeight: 700 }}
+              >
+                {['Date', 'Product', 'Qty', 'Amount', ''].map((label) => (
+                  <th
+                    key={label || 'edit'}
+                    style={{
+                      overflow: 'hidden',
+                      padding: '8px 0',
+                      textAlign: label === 'Qty' || label === 'Amount' ? 'right' : 'left',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="mt-1 flex items-center justify-between gap-2 text-[11px] font-medium text-zinc-500">
-                  {canViewCosts && (
-                    <span>
-                      {formatRM(record.purchaseCost ?? record.price)} / {formatRM(record.amount)}
-                    </span>
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            {filteredRecords.map((record) => {
+              const isEditing = editingRecordId === record.id
+              const supplierName = record.supplierNotes || record.notes
+              const product = products.find(
+                (item) => item.id === record.productId || item.name === record.productName,
+              )
+              const quantityAdded = Number(record.quantityAdded) || 0
+              const productCost =
+                Number(product?.costPrice) || Number(record.purchaseCost ?? record.price) || 0
+              const amount = quantityAdded * productCost
+
+              return (
+                <tbody key={record.id}>
+                  <tr
+                    style={{
+                      background: isEditing ? '#FFFBF4' : undefined,
+                      borderTop: '1px solid #F4F4F5',
+                      boxShadow: isEditing ? 'inset 3px 0 0 #C88B4A' : undefined,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <td
+                      className="text-zinc-500"
+                      style={{
+                        overflow: 'hidden',
+                        padding: '10px 0',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {formatShortDate(record)}
+                    </td>
+                    <td
+                      style={{
+                        overflow: 'hidden',
+                        padding: '10px 0',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <div className="min-w-0" style={{ overflow: 'hidden' }}>
+                        <p className="truncate font-semibold text-zinc-950">
+                          {record.productName}
+                        </p>
+                        {supplierName && (
+                          <p
+                            className="truncate"
+                            style={{ color: '#B09A85', fontSize: 10, fontStyle: 'italic' }}
+                          >
+                            {supplierName}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td
+                      style={{
+                        color: '#5D8A52',
+                        fontWeight: 700,
+                        overflow: 'hidden',
+                        padding: '10px 0',
+                        textAlign: 'right',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      +{quantityAdded}
+                    </td>
+                    <td
+                      style={{
+                        color: '#5D8A52',
+                        fontWeight: 700,
+                        overflow: 'hidden',
+                        padding: '10px 0',
+                        textAlign: 'right',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {formatRM(amount)}
+                    </td>
+                    <td
+                      style={{
+                        overflow: 'hidden',
+                        padding: '10px 0',
+                        textAlign: 'right',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <button
+                        aria-label={`Edit stock in record for ${record.productName}`}
+                        className="grid h-6 w-6 place-items-center rounded-lg bg-zinc-50 text-zinc-600 ring-1 ring-zinc-200 transition hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                        onClick={() => startEditingRecord(record)}
+                        type="button"
+                      >
+                        <PencilIcon className="h-3 w-3" />
+                      </button>
+                    </td>
+                  </tr>
+                  {isEditing && (
+                    <tr style={{ background: '#FFFBF4' }}>
+                      <td colSpan={5} style={{ padding: '0 0 10px' }}>
+                        <div className="mx-2 flex flex-wrap items-center gap-2 rounded-xl bg-zinc-50 p-2 ring-1 ring-zinc-100">
+                          <input
+                            aria-label={`Quantity for ${record.productName}`}
+                            className="h-9 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3 text-[13px] font-bold text-zinc-950 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                            min="1"
+                            onChange={(event) => setEditQuantity(event.target.value)}
+                            type="number"
+                            value={editQuantity}
+                          />
+                          <button
+                            aria-label={`Delete stock in record for ${record.productName}`}
+                            className="grid h-9 w-9 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200 disabled:opacity-60"
+                            disabled={isDeleting || isUpdating}
+                            onClick={() => deleteEditingRecord(record)}
+                            type="button"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            className="secondary-button h-9 px-3 text-xs"
+                            disabled={isDeleting || isUpdating}
+                            onClick={cancelEditingRecord}
+                            type="button"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="primary-button h-9 px-3 text-xs"
+                            disabled={isDeleting || isUpdating}
+                            onClick={() => saveEditingRecord(record)}
+                            type="button"
+                          >
+                            {isUpdating ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                  {(record.supplierNotes || record.notes) && (
-                    <span className="min-w-0 truncate text-right">
-                      {record.supplierNotes || record.notes}
-                    </span>
-                  )}
-                </div>
-              </article>
-            ))}
-          </div>
+                </tbody>
+              )
+            })}
+          </table>
         </div>
       ) : (
         <EmptyState
           title="No stock in yet"
           text="Saved stock additions for the selected date will appear here."
         />
-      )}
-
-      {pendingDeleteRecord && (
-        <div className="fixed inset-0 z-50 flex items-end bg-[#f5f1e8]/30 px-3 pb-3 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6">
-          <div className="w-full rounded-[26px] bg-white p-4 shadow-2xl shadow-zinc-950/20 sm:max-w-md">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  Delete this stock in record?
-                </h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  This will also reduce the product stock quantity by the same amount.
-                </p>
-                <p className="mt-2 truncate text-xs font-semibold text-zinc-500">
-                  {pendingDeleteRecord.productName} · +{Number(pendingDeleteRecord.quantityAdded) || 0}
-                </p>
-              </div>
-              <button
-                aria-label="Cancel delete"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-100 text-zinc-600"
-                onClick={() => setPendingDeleteRecord(null)}
-                type="button"
-              >
-                <CloseIcon className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button
-                className="secondary-button h-11"
-                disabled={isDeleting}
-                onClick={() => setPendingDeleteRecord(null)}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className="danger-button h-11"
-                disabled={isDeleting}
-                onClick={async () => {
-                  setIsDeleting(true)
-                  const didDelete = await onDeleteRecord(pendingDeleteRecord)
-                  setIsDeleting(false)
-                  if (didDelete) setPendingDeleteRecord(null)
-                }}
-                type="button"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </section>
   )
@@ -2202,8 +2457,6 @@ function StockInEntryBox({ date, products, onSave }) {
   const [rows, setRows] = useState([])
   const [search, setSearch] = useState('')
   const [supplierNotes, setSupplierNotes] = useState('')
-  const [showAdditionalCosts, setShowAdditionalCosts] = useState(false)
-  const [additionalCosts, setAdditionalCosts] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [pendingQtyFocusId, setPendingQtyFocusId] = useState('')
   const qtyInputRefs = useRef({})
@@ -2222,9 +2475,9 @@ function StockInEntryBox({ date, products, onSave }) {
     (total, row) => total + (Number(row.quantityAdded) || 0) * (Number(row.purchaseCost) || 0),
     0,
   )
-  const totalAmount = rowTotal + (Number(additionalCosts) || 0)
+  const totalAmount = rowTotal
   const tableGridClass =
-    'grid-cols-[minmax(92px,2.3fr)_46px_48px_54px_58px_26px] sm:grid-cols-[minmax(180px,2.4fr)_76px_76px_92px_96px_38px]'
+    'grid-cols-[minmax(130px,3fr)_52px_54px_60px_68px_30px] sm:grid-cols-[minmax(220px,3fr)_84px_84px_100px_108px_40px]'
 
   useEffect(() => {
     if (!pendingQtyFocusId) return
@@ -2282,6 +2535,10 @@ function StockInEntryBox({ date, products, onSave }) {
   async function handleSubmit(event) {
     event.preventDefault()
     if (!rows.length) return
+    if (!supplierNotes.trim()) {
+      window.alert('Please enter supplier name')
+      return
+    }
 
     setIsSaving(true)
     const didSave = await onSave({
@@ -2305,8 +2562,6 @@ function StockInEntryBox({ date, products, onSave }) {
       setRows([])
       setSearch('')
       setSupplierNotes('')
-      setAdditionalCosts('')
-      setShowAdditionalCosts(false)
     }
   }
 
@@ -2318,7 +2573,7 @@ function StockInEntryBox({ date, products, onSave }) {
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold tracking-tight">Items</h2>
         <button
-          className="h-8 rounded-xl border border-zinc-200 bg-white px-2 text-[10px] font-bold uppercase text-zinc-700 shadow-sm outline-none transition hover:bg-zinc-50 focus:border-zinc-400 focus:ring-4 focus:ring-zinc-200"
+          className="h-9 rounded-xl border border-zinc-200 bg-white px-2.5 text-[11px] font-bold uppercase text-zinc-700 shadow-sm outline-none transition hover:bg-zinc-50 focus:border-zinc-400 focus:ring-4 focus:ring-zinc-200"
           onClick={handleAutofillCost}
           type="button"
         >
@@ -2328,7 +2583,7 @@ function StockInEntryBox({ date, products, onSave }) {
 
       <div className="overflow-visible rounded-[14px] ring-1 ring-zinc-200">
         <div>
-          <div className={`grid ${tableGridClass} gap-0.5 bg-zinc-50 px-1 py-1 text-[8px] font-bold uppercase leading-tight text-zinc-500 sm:gap-1 sm:px-2 sm:py-1.5 sm:text-[10px]`}>
+          <div className={`grid ${tableGridClass} gap-1 bg-zinc-50 px-1.5 py-1.5 text-[11px] font-bold uppercase leading-tight text-zinc-500 sm:px-2 sm:py-2`}>
             <span>Item</span>
             <span>In Stock</span>
             <span>Qty</span>
@@ -2343,18 +2598,18 @@ function StockInEntryBox({ date, products, onSave }) {
 
               return (
                 <div
-                  className={`grid ${tableGridClass} items-center gap-0.5 px-1 py-1.5 text-[10px] sm:gap-1 sm:px-2 sm:py-1.5 sm:text-xs`}
+                  className={`grid ${tableGridClass} items-center gap-1 px-1.5 py-2 text-[13px] sm:px-2`}
                   key={row.rowId}
                 >
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-zinc-950">{row.productName}</p>
-                    <p className="truncate text-[7px] font-medium text-zinc-500 sm:text-[10px]">
+                    <p className="truncate text-[11px] font-medium text-zinc-500">
                       {[row.sku, row.category].filter(Boolean).join(' / ') || '-'}
                     </p>
                   </div>
                   <p className="font-semibold text-zinc-600">{row.stockQty}</p>
                   <input
-                    className="h-8 rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] font-bold outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 sm:px-2 sm:text-xs"
+                    className="h-9 rounded-lg border border-zinc-200 bg-white px-1.5 text-[13px] font-bold outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 sm:px-2"
                     min="1"
                     onChange={(event) =>
                       updateRow(row.rowId, 'quantityAdded', event.target.value)
@@ -2371,7 +2626,7 @@ function StockInEntryBox({ date, products, onSave }) {
                     value={row.quantityAdded}
                   />
                   <input
-                    className="h-8 rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] font-semibold outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 sm:px-2 sm:text-xs"
+                    className="h-9 rounded-lg border border-zinc-200 bg-white px-1.5 text-[13px] font-semibold outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 sm:px-2"
                     min="0"
                     onChange={(event) =>
                       updateRow(row.rowId, 'purchaseCost', event.target.value)
@@ -2380,13 +2635,17 @@ function StockInEntryBox({ date, products, onSave }) {
                     type="number"
                     value={row.purchaseCost}
                   />
-                  <p className="truncate text-right text-[10px] font-bold text-zinc-900 sm:text-xs">
+                  <p
+                    className="truncate text-[13px] font-bold text-zinc-900"
+                    style={{ minWidth: 70, padding: '0 12px', paddingRight: 12, textAlign: 'right' }}
+                  >
                     {formatCompactRM(amount)}
                   </p>
                   <button
                     aria-label={`Remove ${row.productName} from stock in`}
                     className="grid h-8 w-6 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200 sm:w-8"
                     onClick={() => removeRow(row.rowId)}
+                    style={{ flexShrink: 0, marginLeft: 6 }}
                     type="button"
                   >
                     <TrashIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -2395,10 +2654,10 @@ function StockInEntryBox({ date, products, onSave }) {
               )
             })}
 
-            <div className={`relative grid ${tableGridClass} items-center gap-0.5 px-1 py-1.5 text-[10px] sm:gap-1 sm:px-2 sm:py-1.5 sm:text-xs`}>
+            <div className={`relative grid ${tableGridClass} items-center gap-1 px-1.5 py-2 text-[13px] sm:px-2`}>
               <div className="relative">
                 <input
-                  className="h-8 w-full rounded-lg border border-zinc-200 bg-white px-1.5 text-[11px] outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200 sm:px-2 sm:text-xs"
+                  className="h-11 w-full rounded-lg border border-zinc-200 bg-white px-2 text-[13px] outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-200"
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search item"
                   value={search}
@@ -2407,18 +2666,18 @@ function StockInEntryBox({ date, products, onSave }) {
                   <div className="absolute left-0 top-[calc(100%+4px)] z-30 w-[min(280px,calc(100vw-28px))] overflow-hidden rounded-xl bg-white shadow-xl shadow-zinc-950/10 ring-1 ring-zinc-200">
                     {suggestions.map((product) => (
                       <button
-                        className="flex min-h-10 w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+                        className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] font-semibold text-zinc-800 hover:bg-zinc-50"
                         key={product.id}
                         onClick={() => addRow(product)}
                         type="button"
                       >
                         <span className="min-w-0">
                           <span className="block truncate">{product.name}</span>
-                          <span className="block truncate text-[10px] font-medium text-zinc-500">
+                          <span className="block truncate text-[11px] font-medium text-zinc-500">
                             {[product.sku, product.category].filter(Boolean).join(' / ') || '-'}
                           </span>
                         </span>
-                        <span className="shrink-0 text-[11px] text-zinc-500">
+                        <span className="shrink-0 text-[13px] text-zinc-500">
                           {Number(product.stockQty) || 0}
                         </span>
                       </button>
@@ -2426,10 +2685,13 @@ function StockInEntryBox({ date, products, onSave }) {
                   </div>
                 )}
               </div>
-              <span className="text-[11px] font-semibold text-zinc-400">-</span>
-              <span className="text-[11px] font-semibold text-zinc-400">-</span>
-              <span className="text-[11px] font-semibold text-zinc-400">-</span>
-              <span className="text-right text-[10px] font-semibold text-zinc-400 sm:text-[11px]">
+              <span className="text-[13px] font-semibold text-zinc-400">-</span>
+              <span className="text-[13px] font-semibold text-zinc-400">-</span>
+              <span className="text-[13px] font-semibold text-zinc-400">-</span>
+              <span
+                className="text-[13px] font-semibold text-zinc-400"
+                style={{ minWidth: 70, padding: '0 12px', paddingRight: 12, textAlign: 'right' }}
+              >
                 {formatCompactRM(0)}
               </span>
               <span></span>
@@ -2442,44 +2704,36 @@ function StockInEntryBox({ date, products, onSave }) {
         <div className="space-y-2">
           <Field label="Supplier / Notes">
             <input
-              className="field-input h-9"
+              className="field-input"
               onChange={(event) => setSupplierNotes(event.target.value)}
               placeholder="Supplier / notes"
+              style={{ fontSize: 14, fontWeight: 600, height: 44, padding: '0 14px' }}
+              type="text"
               value={supplierNotes}
             />
           </Field>
-          {showAdditionalCosts && (
-            <Field label="Additional costs">
-              <input
-                className="field-input h-9"
-                min="0"
-                onChange={(event) => setAdditionalCosts(event.target.value)}
-                placeholder="0"
-                step="0.01"
-                type="number"
-                value={additionalCosts}
-              />
-            </Field>
-          )}
-          <button
-            className="text-left text-xs font-bold text-zinc-700 underline underline-offset-4"
-            onClick={() => setShowAdditionalCosts((current) => !current)}
-            type="button"
-          >
-            Add additional costs
-          </button>
         </div>
         <div className="rounded-[14px] bg-zinc-50 p-2 text-right ring-1 ring-zinc-100">
-          <p className="text-[10px] font-bold uppercase text-zinc-500">Total amount</p>
-          <p className="text-lg font-bold text-zinc-950">{formatRM(totalAmount)}</p>
+          <p className="text-[11px] font-bold uppercase text-zinc-500">Total amount</p>
+          <p className="text-base font-bold text-zinc-950">{formatRM(totalAmount)}</p>
         </div>
       </div>
 
       <div className="mt-2 flex justify-end">
         <button
-          className="primary-button h-10"
+          className="primary-button h-12 text-sm"
+          aria-disabled={!supplierNotes.trim()}
           disabled={isSaving || !rows.length}
-          style={{ minWidth: 140, borderRadius: 12 }}
+          onClick={(event) => {
+            if (supplierNotes.trim()) return
+            event.preventDefault()
+            window.alert('Please enter supplier name')
+          }}
+          style={{
+            minWidth: 140,
+            borderRadius: 12,
+            opacity: supplierNotes.trim() ? 1 : 0.55,
+          }}
           type="submit"
         >
           <SaveIcon className="mr-2 h-4 w-4" />
@@ -3556,11 +3810,11 @@ function buildDashboardSummary({ products, stockChecks, stockInRecords }) {
     ...windows,
     recentEntries: getStockValueEntries({ productsById, stockChecks, stockInRecords })
       .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 20),
+      .slice(0, 10),
     topValueProducts: productValues
       .filter((product) => product.stockValue > 0)
       .sort((a, b) => b.stockValue - a.stockValue)
-      .slice(0, 20),
+      .slice(0, 10)
   }
 }
 

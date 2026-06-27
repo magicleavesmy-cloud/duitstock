@@ -23,21 +23,21 @@
 }
 
 .stock-badge {
-  height: 26px !important;
-  min-width: 62px !important;
-  padding: 0 10px !important;
-  font-size: 10px !important;
+  min-height: 34px !important;
+  min-width: 72px !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
 }
 
 .product-card,
 .product-list-card,
 .product-item {
   min-height: 62px !important;
-  padding: 10px 12px !important;
+  padding: 14px !important;
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) auto !important;
   align-items: center !important;
-  gap: 10px !important;
+  gap: 12px !important;
 }
 
 .product-card-actions,

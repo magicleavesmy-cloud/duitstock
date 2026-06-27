@@ -5,25 +5,24 @@ export default function StockEntriesTable({ entries }) {
     <section
       className="dashboard-stock-entries"
       style={{
-        background: '#FCF8F3',
-        border: '1px solid rgba(210,175,120,0.35)',
-        borderRadius: 18,
-        boxShadow:
-          '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
-        padding: 16,
+        background: '#FFFFFF',
+        border: '1px solid #ECE7DF',
+        borderRadius: 14,
+        boxShadow: '0 1px 2px rgba(24,24,27,0.04)',
+        padding: 12,
       }}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3
             className="font-bold tracking-tight"
-            style={{ color: '#3B2A1A', fontSize: 14 }}
+            style={{ color: '#18181B', fontSize: 14 }}
           >
             Last 20 Stock Entries
           </h3>
           <p
             className="mt-0.5 font-semibold"
-            style={{ color: '#7A6250', fontSize: 11 }}
+            style={{ color: '#71717A', fontSize: 11 }}
           >
             Latest stock transaction logs.
           </p>
@@ -31,9 +30,9 @@ export default function StockEntriesTable({ entries }) {
         <span
           className="rounded-full px-2 py-0.5 font-bold"
           style={{
-            background: '#F0E8DC',
-            border: '1px solid rgba(210,175,120,0.35)',
-            color: '#7A6250',
+            background: '#F6F3EE',
+            border: '1px solid #ECE7DF',
+            color: '#71717A',
             fontSize: 11,
           }}
         >
@@ -43,24 +42,21 @@ export default function StockEntriesTable({ entries }) {
 
       {entries.length ? (
         <div
-          className="dashboard-stock-table mt-2.5"
+          className="dashboard-stock-table mt-2"
           style={{
-            background: '#F0E8DC',
-            border: '1px solid rgba(210,175,120,0.35)',
-            borderRadius: 14,
-            maxHeight: 420,
-            overflowX: 'hidden',
-            overflowY: 'auto',
+            background: '#FFFFFF',
+            border: '1px solid #ECE7DF',
+            borderRadius: 12,
           }}
         >
           <div className="min-w-[330px] table-fixed" style={{ background: 'transparent' }}>
             <div
-              className="sticky top-0 z-10 grid grid-cols-[110px_60px_45px_50px_65px] font-bold uppercase leading-[1.1]"
+              className="sticky top-0 z-10 grid grid-cols-[112px_62px_44px_50px_64px] font-bold uppercase leading-[1.1]"
               style={{
-                background: '#F0E8DC',
-                color: '#7A6250',
+                background: '#F6F3EE',
+                color: '#71717A',
                 fontSize: 10,
-                padding: '8px 6px',
+                padding: '8px 7px',
               }}
             >
               <span>Product</span>
@@ -72,19 +68,19 @@ export default function StockEntriesTable({ entries }) {
             <div style={{ background: 'transparent' }}>
               {entries.map((entry) => (
                 <article
-                  className="grid grid-cols-[110px_60px_45px_50px_65px] items-center leading-[1.1]"
+                  className="grid grid-cols-[112px_62px_44px_50px_64px] items-center leading-[1.1]"
                   key={entry.id}
                   style={{
                     background: 'transparent',
-                    borderBottom: '1px solid rgba(210,175,120,0.25)',
+                    borderBottom: '1px solid #ECE7DF',
                     fontSize: 11,
-                    height: 44,
-                    padding: '0 6px',
+                    height: 46,
+                    padding: '0 7px',
                   }}
                 >
                   <p
                     className="max-w-[110px] truncate font-bold"
-                    style={{ color: '#3B2A1A' }}
+                    style={{ color: '#18181B' }}
                   >
                     {entry.productName}
                   </p>
@@ -93,13 +89,13 @@ export default function StockEntriesTable({ entries }) {
                     style={{
                       background:
                         entry.action === 'Stock In'
-                          ? 'rgba(93,138,82,0.14)'
-                          : 'rgba(184,92,74,0.14)',
+                          ? 'rgba(22,163,74,0.08)'
+                          : 'rgba(220,38,38,0.08)',
                       border:
                         entry.action === 'Stock In'
-                          ? '1px solid rgba(93,138,82,0.25)'
-                          : '1px solid rgba(184,92,74,0.25)',
-                      color: entry.action === 'Stock In' ? '#5D8A52' : '#B85C4A',
+                          ? '1px solid rgba(22,163,74,0.16)'
+                          : '1px solid rgba(220,38,38,0.16)',
+                      color: entry.action === 'Stock In' ? '#16A34A' : '#DC2626',
                     }}
                   >
                     {entry.action}
@@ -107,7 +103,7 @@ export default function StockEntriesTable({ entries }) {
                   <p
                     className="text-right font-bold"
                     style={{
-                      color: entry.quantityChange > 0 ? '#5D8A52' : '#B85C4A',
+                      color: entry.quantityChange > 0 ? '#16A34A' : '#DC2626',
                       fontSize: 12,
                     }}
                   >
@@ -116,13 +112,13 @@ export default function StockEntriesTable({ entries }) {
                   </p>
                   <p
                     className="text-right font-bold"
-                    style={{ color: '#7A6250', fontSize: 11 }}
+                    style={{ color: '#71717A', fontSize: 11 }}
                   >
                     {entry.currentStock}
                   </p>
                   <p
                     className={`entry-updated text-right ${entry.updatedState}`}
-                    style={{ color: '#5D8A52', fontSize: 11 }}
+                    style={{ color: '#16A34A', fontSize: 11 }}
                   >
                     {entry.updatedLabel}
                   </p>
@@ -143,8 +139,8 @@ function EmptyState({ action, actionText, text, title }) {
     <div
       className="mt-3 rounded-[22px] border border-dashed px-4 py-7 text-center"
       style={{
-        background: '#F0E8DC',
-        borderColor: 'rgba(210,175,120,0.35)',
+        background: '#F6F3EE',
+        borderColor: '#ECE7DF',
       }}
     >
       <div className="mx-auto grid h-10 w-10 place-items-center rounded-2xl text-zinc-500">

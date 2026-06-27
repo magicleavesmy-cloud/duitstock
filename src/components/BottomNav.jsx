@@ -10,23 +10,23 @@ export default function BottomNav({ activePage, items, onChange }) {
       <div
         style={{
           alignItems: 'center',
-          background: '#FCF8F3',
-          border: '1px solid rgba(210,175,120,0.35)',
-          borderRadius: 20,
-          boxShadow:
-            '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
+          background: '#FFFFFF',
+          border: '1px solid #ECE7DF',
+          borderRadius: 16,
+          boxShadow: '0 1px 2px rgba(24,24,27,0.06)',
           display: 'flex',
-          height: 52,
+          height: 54,
           justifyContent: 'space-around',
           margin: '0 auto',
           maxWidth: 430,
-          padding: '0 6px',
+          padding: '0 7px',
           width: '100%',
         }}
       >
         {items.map((item) => {
           const Icon = item.icon
           const isActive = activePage === item.id
+          const label = item.id === 'movements' ? 'Check' : item.label
 
           return (
             <button
@@ -34,51 +34,49 @@ export default function BottomNav({ activePage, items, onChange }) {
               onClick={() => onChange(item.id)}
               style={{
                 alignItems: 'center',
-                background: isActive ? 'rgba(200,137,58,0.16)' : 'transparent',
+                background: isActive ? 'rgba(200,139,74,0.18)' : 'transparent',
                 border: isActive
-                  ? '1px solid rgba(200,137,58,0.35)'
+                  ? '1px solid rgba(200,139,74,0.30)'
                   : '1px solid transparent',
-                borderRadius: 14,
-                boxShadow: isActive
-                  ? 'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)'
-                  : 'none',
-                color: isActive ? '#C8893A' : '#B09A85',
+                borderRadius: 12,
+                boxShadow: 'none',
+                color: isActive ? '#C88B4A' : '#71717A',
                 display: 'flex',
-                flexDirection: 'row',
-                gap: isActive ? 5 : 0,
-                height: 38,
+                flexDirection: 'column',
+                gap: 2,
+                height: 44,
                 justifyContent: 'center',
                 overflow: 'hidden',
-                padding: isActive ? '0 12px' : '0 10px',
+                padding: '0 8px',
                 transition: 'all 0.18s ease',
                 whiteSpace: 'nowrap',
-                flex: isActive ? '0 0 auto' : '1 1 0',
-                minWidth: isActive ? 'auto' : 0,
+                flex: '1 1 0',
+                minWidth: 0,
               }}
               type="button"
             >
               <Icon
                 style={{
-                  color: isActive ? '#C8893A' : '#B09A85',
+                  color: isActive ? '#C88B4A' : '#71717A',
                   filter: 'none',
                   flexShrink: 0,
-                  height: 17,
-                  width: 17,
+                  height: isActive ? 19 : 17,
+                  width: isActive ? 19 : 17,
                 }}
               />
-              {isActive && (
-                <span
-                  style={{
-                    color: '#3B2A1A',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: 0,
-                    lineHeight: 1,
-                  }}
-                >
-                  {item.label}
-                </span>
-              )}
+              <span
+                style={{
+                  color: 'inherit',
+                  display: 'block',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  marginTop: 2,
+                  textAlign: 'center',
+                }}
+              >
+                {label}
+              </span>
             </button>
           )
         })}
