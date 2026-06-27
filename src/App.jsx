@@ -558,7 +558,7 @@ function App() {
     return true
   }
 
-  async function updateStockInRecord(record, quantityValue) {
+  async function updateStockInRecord(record, quantityValue, supplierValue) {
     if (!record?.id) {
       showError('Stock in record was not found.')
       return false
@@ -582,6 +582,7 @@ function App() {
     const purchaseCost =
       Number(record.purchaseCost ?? record.price) || Number(product.costPrice) || 0
     const amount = nextQuantity * purchaseCost
+    const supplierNotes = (supplierValue ?? record.supplierNotes ?? record.notes ?? '').trim()
     const updatedAt = new Date().toISOString()
 
     setActionError('')
@@ -594,9 +595,11 @@ function App() {
           doc(db, 'stockInRecords', record.id),
           {
             amount,
+            notes: supplierNotes,
             price: purchaseCost,
             purchaseCost,
             quantityAdded: nextQuantity,
+            supplierNotes,
             updatedAt: serverTimestamp(),
           },
           { merge: true },
@@ -622,9 +625,11 @@ function App() {
           ? {
               ...item,
               amount,
+              notes: supplierNotes,
               price: purchaseCost,
               purchaseCost,
               quantityAdded: nextQuantity,
+              supplierNotes,
               updatedAt,
             }
           : item,
@@ -2156,6 +2161,7 @@ function StockInHistoryPage({
   const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10))
   const [editingRecordId, setEditingRecordId] = useState('')
   const [editQuantity, setEditQuantity] = useState('')
+  const [editSupplier, setEditSupplier] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const filteredRecords = stockInRecords.filter(
@@ -2169,16 +2175,18 @@ function StockInHistoryPage({
   function startEditingRecord(record) {
     setEditingRecordId(record.id)
     setEditQuantity(String(Number(record.quantityAdded) || 0))
+    setEditSupplier(record.supplierNotes || record.notes || '')
   }
 
   function cancelEditingRecord() {
     setEditingRecordId('')
     setEditQuantity('')
+    setEditSupplier('')
   }
 
   async function saveEditingRecord(record) {
     setIsUpdating(true)
-    const didUpdate = await onUpdateRecord(record, editQuantity)
+    const didUpdate = await onUpdateRecord(record, editQuantity, editSupplier)
     setIsUpdating(false)
     if (didUpdate) cancelEditingRecord()
   }
@@ -2268,12 +2276,12 @@ function StockInHistoryPage({
 
       {filteredRecords.length ? (
         <div className="overflow-hidden rounded-[18px] bg-white shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
-          <table style={{ tableLayout: 'fixed', width: '100%' }}>
+          <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', width: '100%' }}>
             <colgroup>
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '36%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '24%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '28%' }} />
               <col style={{ width: '6%' }} />
             </colgroup>
             <thead>
@@ -2286,9 +2294,10 @@ function StockInHistoryPage({
                     key={label || 'edit'}
                     style={{
                       overflow: 'hidden',
-                      padding: '8px 0',
+                      padding: '8px 6px',
                       textAlign: label === 'Qty' || label === 'Amount' ? 'right' : 'left',
                       textOverflow: 'ellipsis',
+                      verticalAlign: 'middle',
                       whiteSpace: 'nowrap',
                     }}
                   >
@@ -2323,8 +2332,9 @@ function StockInHistoryPage({
                       className="text-zinc-500"
                       style={{
                         overflow: 'hidden',
-                        padding: '10px 0',
+                        padding: '8px 6px',
                         textOverflow: 'ellipsis',
+                        verticalAlign: 'middle',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -2333,8 +2343,9 @@ function StockInHistoryPage({
                     <td
                       style={{
                         overflow: 'hidden',
-                        padding: '10px 0',
+                        padding: '8px 6px',
                         textOverflow: 'ellipsis',
+                        verticalAlign: 'middle',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -2345,7 +2356,13 @@ function StockInHistoryPage({
                         {supplierName && (
                           <p
                             className="truncate"
-                            style={{ color: '#B09A85', fontSize: 10, fontStyle: 'italic' }}
+                            style={{
+                              color: '#B09A85',
+                              display: 'block',
+                              fontSize: 10,
+                              fontStyle: 'italic',
+                              marginTop: 1,
+                            }}
                           >
                             {supplierName}
                           </p>
@@ -2357,9 +2374,10 @@ function StockInHistoryPage({
                         color: '#5D8A52',
                         fontWeight: 700,
                         overflow: 'hidden',
-                        padding: '10px 0',
+                        padding: '8px 6px',
                         textAlign: 'right',
                         textOverflow: 'ellipsis',
+                        verticalAlign: 'middle',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -2370,9 +2388,10 @@ function StockInHistoryPage({
                         color: '#5D8A52',
                         fontWeight: 700,
                         overflow: 'hidden',
-                        padding: '10px 0',
+                        padding: '8px 6px',
                         textAlign: 'right',
                         textOverflow: 'ellipsis',
+                        verticalAlign: 'middle',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -2381,9 +2400,10 @@ function StockInHistoryPage({
                     <td
                       style={{
                         overflow: 'hidden',
-                        padding: '10px 0',
+                        padding: '8px 6px',
                         textAlign: 'right',
                         textOverflow: 'ellipsis',
+                        verticalAlign: 'middle',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -2401,14 +2421,38 @@ function StockInHistoryPage({
                     <tr style={{ background: '#FFFBF4' }}>
                       <td colSpan={5} style={{ padding: '0 0 10px' }}>
                         <div className="mx-2 flex flex-wrap items-center gap-2 rounded-xl bg-zinc-50 p-2 ring-1 ring-zinc-100">
-                          <input
-                            aria-label={`Quantity for ${record.productName}`}
-                            className="h-9 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3 text-[13px] font-bold text-zinc-950 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
-                            min="1"
-                            onChange={(event) => setEditQuantity(event.target.value)}
-                            type="number"
-                            value={editQuantity}
-                          />
+                          <div className="grid min-w-[150px] flex-1 gap-1">
+                            <input
+                              aria-label={`Quantity for ${record.productName}`}
+                              className="h-9 min-w-0 rounded-lg border border-zinc-200 bg-white px-3 text-[13px] font-bold text-zinc-950 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                              min="1"
+                              onChange={(event) => setEditQuantity(event.target.value)}
+                              type="number"
+                              value={editQuantity}
+                            />
+                            <label className="grid gap-1">
+                              <span style={{ color: '#7A6250', fontSize: 10, fontWeight: 700 }}>
+                                Supplier
+                              </span>
+                              <input
+                                aria-label={`Supplier for ${record.productName}`}
+                                onChange={(event) => setEditSupplier(event.target.value)}
+                                style={{
+                                  background: '#F0E8DC',
+                                  border: '1px solid rgba(210,175,120,0.35)',
+                                  borderRadius: 10,
+                                  color: '#3B2A1A',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  height: 36,
+                                  outline: 'none',
+                                  padding: '0 12px',
+                                }}
+                                type="text"
+                                value={editSupplier}
+                              />
+                            </label>
+                          </div>
                           <button
                             aria-label={`Delete stock in record for ${record.productName}`}
                             className="grid h-9 w-9 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200 disabled:opacity-60"
