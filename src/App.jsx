@@ -696,7 +696,7 @@ function App() {
 
   return (
     <div className="app-background min-h-screen text-zinc-950">
-      <div className={`app-shell mx-auto flex min-h-screen w-full max-w-6xl flex-col px-2 pb-28 pt-2.5 sm:px-3 sm:pt-4 lg:px-5 ${visibleActivePage === 'dashboard' ? 'dashboard-shell' : ''}`}>
+      <div className={`app-shell mx-auto flex min-h-screen w-full max-w-6xl flex-col px-2 pb-28 pt-2.5 sm:px-3 sm:pt-4 lg:px-5 ${visibleActivePage === 'dashboard' ? 'dashboard-shell' : 'dashboard-shell'}`}>
         <Header
           activePage={visibleActivePage}
           currentUserRole={currentUserRole}
@@ -921,6 +921,9 @@ const productListCardStyle = {
   background: '#FCF8F3',
   padding: '12px',
   marginBottom: '4px',
+  width: '100%',
+  boxSizing: 'border-box',
+  overflow: 'hidden',
   boxShadow:
     '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
 }
