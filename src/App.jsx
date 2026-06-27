@@ -914,11 +914,12 @@ const productAddButtonStyle = {
 const productListCardStyle = {
   minHeight: '68px',
   borderRadius: '16px',
-  border: '1px solid rgba(80,200,120,0.18)',
-  borderTop: '1px solid rgba(80,200,120,0.28)',
-  background: 'linear-gradient(160deg, rgba(30,50,35,0.60) 0%, rgba(10,20,15,0.75) 100%)',
+  border: '1px solid rgba(34,197,94,0.25)',
+  borderTop: '1px solid rgba(34,197,94,0.35)',
+  background: 'linear-gradient(160deg, rgba(20,40,25,0.85) 0%, rgba(8,18,12,0.92) 100%)',
   padding: '12px',
-  boxShadow: '0 0 18px rgba(50,180,90,0.08), inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 20px rgba(0,0,0,0.40)',
+  marginBottom: '4px',
+  boxShadow: '0 0 20px rgba(34,197,94,0.08), inset 0 1px 0 rgba(34,197,94,0.10), 0 4px 20px rgba(0,0,0,0.50)',
   backdropFilter: 'blur(20px) saturate(1.4)',
   WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
 }
@@ -1163,7 +1164,7 @@ function ProductCard({
             </p>
           )}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <div className="flex shrink-0 flex-row items-center gap-2">
           <span className="stock-badge shrink-0">
             Stock {Number(product.stockQty) || 0}
           </span>

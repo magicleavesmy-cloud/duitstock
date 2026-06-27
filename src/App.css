@@ -303,3 +303,313 @@
     0 0 34px rgba(251,146,60,0.22);
   transform: translateY(-1px);
 }
+
+/* Stock Check Page */
+.stock-check-page{
+  background: transparent;
+}
+
+/* Progress Card */
+.stock-check-progress{
+  background: rgba(15,23,42,0.72);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 0 12px rgba(59,130,246,0.08);
+}
+
+/* Search + Select */
+.stock-check-search,
+.stock-check-select{
+  background: rgba(15,23,42,0.72) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 12px !important;
+  color: white !important;
+}
+
+/* Filter pills */
+.stock-filter-pill{
+  background: rgba(15,23,42,0.72);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+}
+
+.stock-filter-pill.active{
+  background: rgba(251,146,60,0.14);
+  border: 1px solid rgba(251,146,60,0.30);
+  box-shadow: 0 0 10px rgba(251,146,60,0.18);
+}
+
+/* Product check cards */
+.stock-check-card{
+  background: rgba(15,23,42,0.72);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  box-shadow: 0 0 12px rgba(59,130,246,0.08);
+}
+
+/* Title */
+.stock-check-title{
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Green stock text */
+.stock-check-stock{
+  color: #22c55e;
+  text-shadow: 0 0 8px rgba(34,197,94,0.35);
+}
+
+/* Red last updated */
+.stock-check-updated{
+  color: #ef4444;
+  text-shadow: 0 0 8px rgba(239,68,68,0.28);
+}
+
+/* Inputs */
+.stock-check-input{
+  background: rgba(15,23,42,0.72);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  color: #fff;
+}
+
+.stock-check-input:focus{
+  box-shadow: 0 0 8px rgba(59,130,246,0.22);
+}
+
+/* Save button */
+.stock-check-save{
+  background: linear-gradient(
+    180deg,
+    rgba(251,146,60,0.95),
+    rgba(249,115,22,0.92)
+  );
+  border: 1px solid rgba(251,146,60,0.45);
+  color: #fff;
+  border-radius: 14px;
+  box-shadow:
+    0 0 14px rgba(251,146,60,0.32),
+    0 0 28px rgba(251,146,60,0.16);
+}
+
+/* Thin scrollbar */
+.stock-check-list::-webkit-scrollbar{
+  width: 4px;
+}
+
+.stock-check-list::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.14);
+  border-radius: 999px;
+}
+
+
+/* Compact product cards */
+.product-card{
+  min-height: 74px !important;
+  padding: 10px 12px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Left content tighter */
+.product-card-content{
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.product-card-title{
+  font-size: 13px !important;
+  font-weight: 700;
+}
+
+.product-card-subtitle{
+  font-size: 10px !important;
+  opacity: .72;
+}
+
+/* Right side inline */
+.product-card-actions{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Stock chip compact */
+.stock-badge{
+  height: 28px !important;
+  padding: 0 10px !important;
+  font-size: 11px !important;
+  border-radius: 999px;
+}
+
+/* Stock in button compact */
+.stock-in-btn{
+  height: 28px !important;
+  min-width: 74px !important;
+  padding: 0 12px !important;
+  font-size: 11px !important;
+  border-radius: 999px;
+}
+
+/* Reduce vertical gap between product cards */
+.products-list{
+  gap: 8px !important;
+}
+
+
+/* tighter product cards */
+.product-card{
+  min-height: 58px !important;
+  padding: 8px 12px !important;
+  border-radius: 14px !important;
+}
+
+/* main row */
+.product-card-inner{
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+/* left side */
+.product-card-content{
+  gap: 2px !important;
+}
+
+.product-card-title{
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+}
+
+.product-card-subtitle{
+  font-size: 9px !important;
+  line-height: 1 !important;
+}
+
+/* right side stack tighter */
+.product-card-actions{
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* stock chip */
+.stock-badge{
+  height: 24px !important;
+  padding: 0 8px !important;
+  font-size: 10px !important;
+}
+
+/* stock in button */
+.stock-in-btn{
+  height: 24px !important;
+  min-width: 64px !important;
+  padding: 0 10px !important;
+  font-size: 10px !important;
+}
+
+/* tighter list */
+.products-list{
+  gap: 6px !important;
+}
+
+
+/* force product card compact + right actions side-by-side */
+.product-card,
+.product-list-card,
+.product-item{
+  min-height: 62px !important;
+  padding: 10px 12px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.product-card-actions,
+.product-actions,
+.card-actions{
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+}
+
+.stock-badge,
+.stock-chip,
+.product-stock-badge{
+  height: 26px !important;
+  padding: 0 10px !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+}
+
+.stock-in-btn,
+.stock-in-button,
+.product-stock-in,
+button.stock-in{
+  height: 28px !important;
+  min-width: 70px !important;
+  padding: 0 12px !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+}
+
+.product-card-title,
+.product-title{
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+}
+
+.product-card-subtitle,
+.product-subtitle{
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+
+.products-list,
+.product-list{
+  gap: 7px !important;
+}
+
+
+/* force chip + button horizontal */
+.product-card-right,
+.product-actions,
+.stock-actions{
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+/* kill vertical stacking */
+.product-card-right > *,
+.product-actions > *,
+.stock-actions > *{
+  display: inline-flex !important;
+  margin: 0 !important;
+}
+
+/* chip compact */
+.stock-badge{
+  order: 1;
+  height: 24px !important;
+  min-width: 62px !important;
+}
+
+/* button compact */
+.stock-in-btn{
+  order: 2;
+  height: 24px !important;
+  min-width: 68px !important;
+}
+
