@@ -953,6 +953,7 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
         formatNumber={formatNumber}
         formatRM={formatRM}
         products={topValueProducts}
+        recentEntries={summary.recentEntries}
         totalStockQty={summary.totalStockQty}
       />
       <StockEntriesTable entries={summary.recentEntries} />
@@ -1355,17 +1356,23 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
     const lowered = query.toLowerCase().trim()
 
     return products
+      .map((product, index) => ({ index, product }))
       .filter((product) => {
-        const matchesCategory = category === 'all' || product.category === category
-        const matchesQuery = [product.name, product.category, product.sku]
+        const matchesCategory = category === 'all' || product.product.category === category
+        const matchesQuery = [product.product.name, product.product.category, product.product.sku]
           .join(' ')
           .toLowerCase()
           .includes(lowered)
-        const matchesUpdatedAt = isProductInUpdatedAtFilter(product, updatedAtFilter)
+        const matchesUpdatedAt = isProductInUpdatedAtFilter(product.product, updatedAtFilter)
 
         return matchesCategory && matchesQuery && matchesUpdatedAt
       })
-      .sort((a, b) => Number(isProductChecked(a.id)) - Number(isProductChecked(b.id)))
+      .sort((a, b) => {
+        const checkedDiff =
+          Number(isProductChecked(a.product.id)) - Number(isProductChecked(b.product.id))
+        return checkedDiff || a.index - b.index
+      })
+      .map((item) => item.product)
   }, [category, counts, products, query, updatedAtFilter])
   const progressProducts = useMemo(() => {
     const lowered = query.toLowerCase().trim()
@@ -1684,6 +1691,7 @@ function StockCheckRow({
   const storeQty = count.storeQty ?? ''
   const hasEntry = displayQty !== '' || storeQty !== ''
   const isSaved = Boolean(count.isSaved)
+  const isCheckedIndicatorActive = isSaved || isSaving
   const systemQty = Number(count.systemQty ?? product.stockQty) || 0
   const physicalQty = (Number(displayQty) || 0) + (Number(storeQty) || 0)
   const difference = physicalQty - systemQty
@@ -1693,9 +1701,20 @@ function StockCheckRow({
   return (
     <article className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-[14px] bg-white/75 px-2 py-1.5 shadow-sm ring-1 ring-white/80">
       <div className="flex min-w-0 items-start gap-1.5">
-        <span className={`product-status-dot ${updatedAtState}`}>
-          {isSaved && <CheckIcon className="h-2.5 w-2.5" />}
-        </span>
+        <span
+          aria-hidden="true"
+          style={{
+            background: isCheckedIndicatorActive ? '#5D8A52' : '#B85C4A',
+            borderRadius: 999,
+            boxShadow: isCheckedIndicatorActive
+              ? '0 0 6px rgba(93,138,82,0.70)'
+              : '0 0 6px rgba(184,92,74,0.70)',
+            flexShrink: 0,
+            height: 10,
+            marginTop: 3,
+            width: 10,
+          }}
+        />
 
         <div className="min-w-0">
           <p className="truncate text-[12px] font-bold leading-tight">{product.name}</p>
@@ -3873,6 +3892,7 @@ function getStockValueEntries({ productsById, stockChecks, stockInRecords }) {
       action: 'Stock In',
       currentStock: getProductCurrentStock(product || {}),
       id: `stock-in-${record.id}`,
+      productId: record.productId,
       productName: record.productName || product?.name || 'Unknown product',
       quantityChange,
       timestamp,
@@ -3893,6 +3913,7 @@ function getStockValueEntries({ productsById, stockChecks, stockInRecords }) {
       action: quantityChange > 0 ? 'Stock In' : 'Stock Out',
       currentStock: countedStock,
       id: `stock-check-${record.id}`,
+      productId: record.productId,
       productName: record.productName || product?.name || 'Unknown product',
       quantityChange,
       timestamp,

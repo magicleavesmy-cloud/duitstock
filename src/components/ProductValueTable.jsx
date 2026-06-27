@@ -5,8 +5,11 @@ export default function ProductValueTable({
   formatNumber,
   formatRM,
   products,
+  recentEntries = [],
   totalStockQty,
 }) {
+  const recentChangeByProduct = getRecentStockInChanges(recentEntries)
+
   return (
     <DashboardBox
       accent="gold"
@@ -55,38 +58,50 @@ export default function ProductValueTable({
             }}
           >
             <colgroup>
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '45%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '27%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '32%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '32%' }} />
             </colgroup>
             <thead>
               <tr style={{ height: 34 }}>
                 <HeaderCell>#</HeaderCell>
                 <HeaderCell>Product</HeaderCell>
+                <HeaderCell align="right" style={{ color: '#B09A85', fontSize: 9 }}>
+                  Chg
+                </HeaderCell>
                 <HeaderCell align="right">Qty</HeaderCell>
                 <HeaderCell align="right">Value</HeaderCell>
               </tr>
             </thead>
             <tbody>
-              {products.map((product, index) => (
-                <tr key={product.id} style={{ height: 46, verticalAlign: 'middle' }}>
-                  <td style={rankCellStyle}>
-                    <span className="most-value-rank">
-                      {index + 1}
-                    </span>
-                  </td>
-                  <td style={productCellStyle}>
-                    {product.name}
-                  </td>
-                  <td style={qtyCellStyle}>
-                    {formatNumber(product.stockQty)}
-                  </td>
-                  <td style={valueCellStyle}>
-                    {formatRM(product.stockValue)}
-                  </td>
-                </tr>
-              ))}
+              {products.map((product, index) => {
+                const change =
+                  recentChangeByProduct.get(product.id) ?? recentChangeByProduct.get(product.name) ?? 0
+
+                return (
+                  <tr key={product.id} style={{ height: 46, verticalAlign: 'middle' }}>
+                    <td style={rankCellStyle}>
+                      <span className="most-value-rank">
+                        {index + 1}
+                      </span>
+                    </td>
+                    <td style={productCellStyle}>
+                      {product.name}
+                    </td>
+                    <td style={changeCellStyle}>
+                      <ProductChange value={change} />
+                    </td>
+                    <td style={qtyCellStyle}>
+                      {formatNumber(product.stockQty)}
+                    </td>
+                    <td style={valueCellStyle}>
+                      {formatRM(product.stockValue)}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -131,6 +146,14 @@ const qtyCellStyle = {
   whiteSpace: 'nowrap',
 }
 
+const changeCellStyle = {
+  ...baseCellStyle,
+  fontSize: 12,
+  padding: '9px 7px',
+  textAlign: 'right',
+  whiteSpace: 'nowrap',
+}
+
 const valueCellStyle = {
   ...baseCellStyle,
   color: '#18181B',
@@ -140,6 +163,46 @@ const valueCellStyle = {
   padding: '9px 7px',
   textAlign: 'right',
   whiteSpace: 'nowrap',
+}
+
+function ProductChange({ value }) {
+  const change = Number(value) || 0
+
+  if (change === 0) {
+    return <span style={{ color: '#B09A85', fontWeight: 800 }}>-</span>
+  }
+
+  return (
+    <span style={{ color: change > 0 ? '#5D8A52' : '#B85C4A', fontWeight: 800 }}>
+      {change > 0 ? `+${change}` : change}
+    </span>
+  )
+}
+
+function getRecentStockInChanges(entries) {
+  const tenDaysAgo = Date.now() - 10 * 24 * 60 * 60 * 1000
+  const changes = new Map()
+
+  entries.forEach((entry) => {
+    if (entry.action !== 'Stock In') return
+
+    const timestamp =
+      entry.timestamp instanceof Date ? entry.timestamp.getTime() : new Date(entry.timestamp).getTime()
+    if (!Number.isFinite(timestamp) || timestamp < tenDaysAgo) return
+
+    const quantityChange = Number(entry.quantityChange) || 0
+    if (!quantityChange) return
+
+    if (entry.productId) {
+      changes.set(entry.productId, (changes.get(entry.productId) || 0) + quantityChange)
+    }
+
+    if (entry.productName) {
+      changes.set(entry.productName, (changes.get(entry.productName) || 0) + quantityChange)
+    }
+  })
+
+  return changes
 }
 
 const trendCellStyle = {
