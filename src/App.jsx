@@ -961,6 +961,7 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
 
         <DashboardBox
           accent="gold"
+          className="most-value-card"
           icon={StarIcon}
           iconClassName="bg-amber-50 text-amber-600 ring-amber-100"
           title="Most Value Products"
@@ -999,9 +1000,9 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
   )
 }
 
-function DashboardBox({ accent, children, icon: Icon, iconClassName, title }) {
+function DashboardBox({ accent, children, className = '', icon: Icon, iconClassName, title }) {
   return (
-    <section className={`dashboard-card dashboard-card-${accent}`}>
+    <section className={`dashboard-card dashboard-card-${accent} ${className}`.trim()}>
       <div className="flex items-center gap-1.5">
         <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ring-1 ${iconClassName}`}>
           <Icon className="h-3.5 w-3.5" />

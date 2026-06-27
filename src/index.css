@@ -146,8 +146,14 @@
   }
 
   .most-value-list {
-    max-height: 420px;
-    overflow-y: auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .most-value-card {
+    height: auto;
+    overflow: visible;
   }
 
   .most-value-item {
