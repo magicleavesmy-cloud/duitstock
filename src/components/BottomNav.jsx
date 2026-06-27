@@ -1,6 +1,6 @@
 export default function BottomNav({ activePage, items, onChange }) {
   return (
-    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom)+0.35rem)]">
+    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-40 px-3" style={{paddingBottom: 'max(env(safe-area-inset-bottom), 12px)'}}>
       <div
         style={{
           alignItems: 'center',
