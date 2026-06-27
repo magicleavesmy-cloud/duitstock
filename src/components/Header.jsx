@@ -18,19 +18,19 @@ export default function Header({
           <BoxIcon className="h-[18px] w-[18px]" />
         </div>
         <div className="min-w-0">
-          <p className="header-greeting text-[10px] font-semibold text-zinc-500">{greeting}, DuitStock 👋</p>
-          <h1 className="header-title truncate text-lg font-semibold tracking-tight text-zinc-950 sm:text-xl">
+          <p className="header-greeting text-xs font-medium text-zinc-500">{greeting}, DuitStock 👋</p>
+          <h1 className="header-title truncate text-xl font-bold tracking-tight text-zinc-950 sm:text-xl">
             {title}
           </h1>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        <span className="role-chip rounded-full px-2 py-1 text-[10px] font-bold uppercase">
+        <span className="role-chip rounded-full px-3 py-1.5 text-xs font-bold uppercase">
           {currentUserRole}
         </span>
         <SyncStatusPill status={syncStatus} text={syncStatusText} />
         <button
-          className="secondary-button h-8 rounded-full px-2 text-[10px]"
+          className="secondary-button h-9 rounded-full px-3 text-xs"
           onClick={onLogout}
           type="button"
         >
