@@ -3037,6 +3037,21 @@ function StockInModal({ product, onClose, onSave }) {
 function ProductModal({ categories, product, onClose, onSave }) {
   const [form, setForm] = useState(product)
   const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const productModalInputStyle = {
+    fontSize: 14,
+    height: 48,
+    padding: '0 14px',
+  }
+  const productModalLabelStyle = {
+    fontSize: 12,
+    fontWeight: 600,
+    marginBottom: 6,
+  }
+  const productModalButtonStyle = {
+    fontSize: 14,
+    fontWeight: 700,
+    height: 50,
+  }
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -3063,11 +3078,12 @@ function ProductModal({ categories, product, onClose, onSave }) {
       <form
         className="max-h-[92vh] w-full overflow-y-auto rounded-[26px] bg-white p-4 shadow-2xl shadow-zinc-950/20 sm:max-w-md"
         onSubmit={handleSubmit}
+        style={{ borderRadius: 24, maxWidth: 480, padding: 20 }}
       >
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold text-zinc-500">Product</p>
-            <h2 className="text-xl font-semibold tracking-tight">
+            <h2 className="tracking-tight" style={{ fontSize: 18, fontWeight: 800 }}>
               {product.id ? 'Edit product' : 'Add product'}
             </h2>
           </div>
@@ -3081,20 +3097,22 @@ function ProductModal({ categories, product, onClose, onSave }) {
           </button>
         </div>
 
-        <div className="grid gap-3">
-          <Field label="Product Name">
+        <div className="grid" style={{ gap: 16 }}>
+          <Field label="Product Name" labelStyle={productModalLabelStyle}>
             <input
               className="field-input"
               onChange={(event) => updateField('name', event.target.value)}
               required
+              style={productModalInputStyle}
               value={form.name}
             />
           </Field>
-          <Field label="Category">
+          <Field label="Category" labelStyle={productModalLabelStyle}>
             <select
               className="field-input"
               onChange={(event) => handleCategoryChange(event.target.value)}
               required
+              style={productModalInputStyle}
               value={isAddingCategory ? '__new__' : form.category}
             >
               <option value="" disabled>
@@ -3109,41 +3127,45 @@ function ProductModal({ categories, product, onClose, onSave }) {
             </select>
           </Field>
           {isAddingCategory && (
-            <Field label="New Category Name">
+            <Field label="New Category Name" labelStyle={productModalLabelStyle}>
               <input
                 className="field-input"
                 onChange={(event) => updateField('category', event.target.value)}
                 placeholder="New Category Name"
                 required
+                style={productModalInputStyle}
                 value={form.category}
               />
             </Field>
           )}
-          <Field label="Cost Price">
+          <Field label="Cost Price" labelStyle={productModalLabelStyle}>
             <input
               className="field-input"
               min="0"
               onChange={(event) => updateField('costPrice', event.target.value)}
               step="0.01"
+              style={productModalInputStyle}
               type="number"
               value={form.costPrice}
             />
           </Field>
-          <Field label="Selling Price">
+          <Field label="Selling Price" labelStyle={productModalLabelStyle}>
             <input
               className="field-input"
               min="0"
               onChange={(event) => updateField('sellingPrice', event.target.value)}
               step="0.01"
+              style={productModalInputStyle}
               type="number"
               value={form.sellingPrice}
             />
           </Field>
-          <Field label="Stock Qty">
+          <Field label="Stock Qty" labelStyle={productModalLabelStyle}>
             <input
               className="field-input"
               min="0"
               onChange={(event) => updateField('stockQty', event.target.value)}
+              style={productModalInputStyle}
               type="number"
               value={form.stockQty}
             />
@@ -3151,10 +3173,15 @@ function ProductModal({ categories, product, onClose, onSave }) {
         </div>
 
         <div className="mt-4 flex gap-2">
-          <button className="secondary-button h-11 flex-1" onClick={onClose} type="button">
+          <button
+            className="secondary-button flex-1"
+            onClick={onClose}
+            style={productModalButtonStyle}
+            type="button"
+          >
             Cancel
           </button>
-          <button className="primary-button h-11 flex-1" type="submit">
+          <button className="primary-button flex-1" style={productModalButtonStyle} type="submit">
             Save
           </button>
         </div>
@@ -3196,10 +3223,12 @@ function MetricCard({ icon: Icon, label, onClick, tone = 'zinc', value }) {
   )
 }
 
-function Field({ children, label }) {
+function Field({ children, label, labelStyle }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-zinc-600">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-zinc-600" style={labelStyle}>
+        {label}
+      </span>
       {children}
     </label>
   )
