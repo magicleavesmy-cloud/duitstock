@@ -618,3 +618,59 @@ html {
 html, body, * {
   font-family: 'Nunito', sans-serif !important;
 }
+
+/* Force summary stat rows to stack vertically */
+.dashboard-card-item {
+  display: block !important;
+}
+
+.dashboard-card-item > div {
+  display: block !important;
+}
+
+.dashboard-card-item span {
+  display: block !important;
+}
+
+/* Remove ring outlines on cards */
+.dashboard-card-item.ring-1,
+.ring-1 {
+  --tw-ring-shadow: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove line above bottom nav */
+.bottom-nav {
+  border-top: none !important;
+}
+
+.dashboard-card-item {
+  box-shadow: 3px 3px 8px rgba(190,160,120,0.14), -3px -3px 8px rgba(255,255,255,0.85) !important;
+  --tw-ring-shadow: none !important;
+  --tw-ring-color: transparent !important;
+}
+
+* {
+  --tw-ring-shadow: none !important;
+}
+
+/* Kill all zinc rings and white backgrounds globally */
+.ring-1, .ring-2 {
+  --tw-ring-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.bg-white, .bg-zinc-50, .bg-zinc-100 {
+  background: #FCF8F3 !important;
+}
+
+.shadow-sm, .shadow-xl {
+  box-shadow: 6px 6px 16px rgba(190,160,120,0.16), -6px -6px 16px rgba(255,255,255,0.92) !important;
+}
+
+.rounded-\[20px\].bg-white,
+.rounded-\[20px\].shadow-sm,
+.rounded-\[18px\].bg-white,
+.rounded-\[16px\].bg-zinc-50 {
+  border: 1px solid rgba(210,175,120,0.28) !important;
+}

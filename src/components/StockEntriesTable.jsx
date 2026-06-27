@@ -5,10 +5,10 @@ export default function StockEntriesTable({ entries }) {
     <section
       className="dashboard-stock-entries"
       style={{
-        background: '#FFFFFF',
-        border: '1px solid #ECE7DF',
+        background: '#FCF8F3',
+        border: '1px solid rgba(210,175,120,0.32)',
         borderRadius: 14,
-        boxShadow: '0 1px 2px rgba(24,24,27,0.04)',
+        boxShadow: '6px 6px 16px rgba(190,160,120,0.16), -6px -6px 16px rgba(255,255,255,0.92)',
         padding: 12,
       }}
     >
@@ -49,9 +49,9 @@ export default function StockEntriesTable({ entries }) {
             borderRadius: 12,
           }}
         >
-          <div className="min-w-[330px] table-fixed" style={{ background: 'transparent' }}>
+          <div className="w-full" style={{ background: 'transparent' }}>
             <div
-              className="sticky top-0 z-10 grid grid-cols-[112px_62px_44px_50px_64px] font-bold uppercase leading-[1.1]"
+              className="sticky top-0 z-10 grid grid-cols-[30%_18%_12%_14%_26%] font-bold uppercase leading-[1.1]"
               style={{
                 background: '#F6F3EE',
                 color: '#71717A',
@@ -68,11 +68,11 @@ export default function StockEntriesTable({ entries }) {
             <div style={{ background: 'transparent' }}>
               {entries.map((entry) => (
                 <article
-                  className="grid grid-cols-[112px_62px_44px_50px_64px] items-center leading-[1.1]"
+                  className="grid grid-cols-[30%_18%_12%_14%_26%] items-center leading-[1.1]"
                   key={entry.id}
                   style={{
                     background: 'transparent',
-                    borderBottom: '1px solid #ECE7DF',
+                    borderBottom: '1px solid rgba(210,175,120,0.18)',
                     fontSize: 11,
                     height: 46,
                     padding: '0 7px',
@@ -80,7 +80,7 @@ export default function StockEntriesTable({ entries }) {
                 >
                   <p
                     className="max-w-[110px] truncate font-bold"
-                    style={{ color: '#18181B' }}
+                    style={{ color: '#3B2A1A' }}
                   >
                     {entry.productName}
                   </p>

@@ -2281,8 +2281,8 @@ function StockInHistoryPage({
               <col style={{ width: '14%' }} />
               <col style={{ width: '30%' }} />
               <col style={{ width: '22%' }} />
-              <col style={{ width: '28%' }} />
-              <col style={{ width: '6%' }} />
+              <col style={{ width: '26%' }} />
+              <col style={{ width: '8%' }} />
             </colgroup>
             <thead>
               <tr
