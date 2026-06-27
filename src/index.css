@@ -317,12 +317,10 @@ html {
   }
 
   .dashboard-summary-grid .dashboard-card-item {
-    display: grid !important;
+    display: block !important;
     height: auto !important;
     min-height: 0 !important;
-    grid-template-columns: 20px minmax(0, 1fr) auto !important;
     align-items: center !important;
-    gap: 2px 6px !important;
     padding: 6px 0 !important;
     border-top: 1px solid var(--ds-border) !important;
     border-radius: 0 !important;
@@ -334,7 +332,7 @@ html {
   }
 
   .dashboard-summary-grid .dashboard-card-item > div {
-    display: contents !important;
+    display: block !important;
   }
 
   .dashboard-summary-grid .dashboard-value {
@@ -714,4 +712,11 @@ html, body, #root, .app-background, .app-shell, .dashboard-shell {
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+/* Remove background from stat rows */
+.dashboard-card-item {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
 }

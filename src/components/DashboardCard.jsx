@@ -15,11 +15,9 @@ export function DashboardBox({ accent, children, className = '', headerAction, i
 
 export function DashboardStatRow({ label, value, valueClassName }) {
   return (
-    <div className="dashboard-card-item" style={{ borderRadius:12, padding:'8px 12px' }}>
-      <div style={{ display:'block', width:'100%' }}>
-        <span style={{ display:'block', fontSize:9, fontWeight:600, color:'#7A6250', marginBottom:2 }}>{label}</span>
-        <span className={valueClassName} style={{ display:'block', fontSize:13, fontWeight:800 }}>{value}</span>
-      </div>
+    <div className="dashboard-card-item" style={{ borderRadius: 12, padding: '8px 12px' }}>
+      <p style={{ fontSize: 9, fontWeight: 600, color: '#7A6250', margin: 0, lineHeight: 1.4 }}>{label}</p>
+      <p className={valueClassName} style={{ fontSize: 13, fontWeight: 800, margin: 0, lineHeight: 1.4 }}>{value}</p>
     </div>
   )
 }
