@@ -4,46 +4,41 @@ export default function StockOverview({ summary, formatRM }) {
   const metrics = [
     {
       icon: BoxIcon,
-      iconColor: '#22C55E',
+      iconColor: '#5D8A52',
       label: 'Products',
       sublabel: 'Total products',
       value: summary.totalProducts,
       valueClassName: 'text-emerald-700',
       valueFontSize: 15,
-      width: 95,
     },
     {
       icon: LayersIcon,
-      iconColor: '#00B6FF',
+      iconColor: '#C8893A',
       label: 'Total Stock Qty',
       sublabel: 'Total quantity',
       value: summary.totalStockQty,
-      valueClassName: 'text-blue-600',
+      valueClassName: 'text-amber-600',
       valueFontSize: 15,
-      width: 115,
     },
     {
       icon: WalletIcon,
-      iconColor: '#B347FF',
+      iconColor: '#C8893A',
       label: 'Total Stock Value',
       sublabel: 'Total inventory value',
       value: formatRM(summary.totalStockValue),
       valueClassName: 'text-purple-700',
       valueFontSize: 13,
-      width: 145,
     },
   ]
 
   return (
     <section
       style={{
-        background: 'rgba(15,23,42,0.72)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        border: '1px solid rgba(56,189,248,0.42)',
+        background: '#FCF8F3',
+        border: '1px solid rgba(210,175,120,0.35)',
         borderRadius: 18,
         boxShadow:
-          '0 0 13px rgba(56,189,248,0.18), inset 0 1px 0 rgba(255,255,255,0.05)',
+          '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
         padding: 15,
       }}
     >
@@ -58,23 +53,21 @@ export default function StockOverview({ summary, formatRM }) {
         <span
           style={{
             alignItems: 'center',
-            backdropFilter: 'blur(10px)',
             boxShadow:
-              '0 0 10px rgba(34,197,94,0.35), 0 0 22px rgba(34,197,94,0.16)',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
+              'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
+            background: '#F0E8DC',
+            border: '1px solid rgba(210,175,120,0.35)',
             borderRadius: 10,
             display: 'grid',
             flexShrink: 0,
             height: 18,
             placeItems: 'center',
             width: 18,
-            WebkitBackdropFilter: 'blur(10px)',
           }}
         >
           <BoxIcon
             style={{
-              color: '#22C55E',
+              color: '#5D8A52',
               filter: 'drop-shadow(0 0 6px currentColor)',
               height: 18,
               width: 18,
@@ -83,7 +76,7 @@ export default function StockOverview({ summary, formatRM }) {
         </span>
         <h3
           style={{
-            color: '#ffffff',
+            color: '#3B2A1A',
             fontSize: 15,
             fontWeight: 700,
             lineHeight: 1.1,
@@ -98,7 +91,8 @@ export default function StockOverview({ summary, formatRM }) {
         style={{
           alignItems: 'stretch',
           display: 'flex',
-          gap: 10,
+          gap: 8,
+          width: '100%',
         }}
       >
         {metrics.map((metric) => (
@@ -122,17 +116,17 @@ function MetricCard({
   return (
     <div
       style={{
-        background: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(255,255,255,0.09)',
+        background: '#F0E8DC',
+        border: '1px solid rgba(210,175,120,0.35)',
         borderRadius: 12,
         display: 'flex',
         flexDirection: 'column',
-        flex: '0 0 auto',
+        flex: '1 1 0',
+        minWidth: 0,
         height: 68,
         justifyContent: 'center',
         overflow: 'hidden',
         padding: '8px 10px',
-        width,
       }}
     >
       <div
@@ -147,15 +141,10 @@ function MetricCard({
         <span
           style={{
             alignItems: 'center',
-            backdropFilter: 'blur(10px)',
             boxShadow:
-              iconColor === '#22C55E'
-                ? '0 0 10px rgba(34,197,94,0.35), 0 0 22px rgba(34,197,94,0.16)'
-                : iconColor === '#00B6FF'
-                  ? '0 0 10px rgba(59,130,246,0.35), 0 0 22px rgba(59,130,246,0.16)'
-                  : '0 0 10px rgba(192,132,252,0.35), 0 0 22px rgba(192,132,252,0.16)',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
+              'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
+            background: '#FCF8F3',
+            border: '1px solid rgba(210,175,120,0.35)',
             borderRadius: 10,
             display: 'grid',
             flexShrink: 0,
@@ -163,7 +152,6 @@ function MetricCard({
             padding: 3,
             placeItems: 'center',
             width: 18,
-            WebkitBackdropFilter: 'blur(10px)',
           }}
         >
           <Icon
@@ -177,7 +165,7 @@ function MetricCard({
         </span>
         <p
           style={{
-            color: 'rgba(255,255,255,0.72)',
+            color: '#7A6250',
             fontSize: 9,
             fontWeight: 600,
             lineHeight: 1.1,
@@ -208,7 +196,7 @@ function MetricCard({
       </p>
       <p
         style={{
-          color: 'rgba(255,255,255,0.48)',
+          color: '#B09A85',
           fontSize: 8,
           lineHeight: 1.1,
           margin: 0,

@@ -5,10 +5,11 @@ export default function StockEntriesTable({ entries }) {
     <section
       className="dashboard-stock-entries"
       style={{
-        background: 'rgba(8,20,35,0.78)',
-        border: '1px solid rgba(56,189,248,0.55)',
+        background: '#FCF8F3',
+        border: '1px solid rgba(210,175,120,0.35)',
         borderRadius: 18,
-        boxShadow: '0 0 16px rgba(56,189,248,0.18)',
+        boxShadow:
+          '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
         padding: 16,
       }}
     >
@@ -16,13 +17,13 @@ export default function StockEntriesTable({ entries }) {
         <div>
           <h3
             className="font-bold tracking-tight"
-            style={{ color: 'rgba(255,255,255,0.96)', fontSize: 14 }}
+            style={{ color: '#3B2A1A', fontSize: 14 }}
           >
             Last 20 Stock Entries
           </h3>
           <p
             className="mt-0.5 font-semibold"
-            style={{ color: 'rgba(255,255,255,0.68)', fontSize: 11 }}
+            style={{ color: '#7A6250', fontSize: 11 }}
           >
             Latest stock transaction logs.
           </p>
@@ -30,9 +31,9 @@ export default function StockEntriesTable({ entries }) {
         <span
           className="rounded-full px-2 py-0.5 font-bold"
           style={{
-            background: 'rgba(15,23,42,0.72)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            color: 'rgba(255,255,255,0.85)',
+            background: '#F0E8DC',
+            border: '1px solid rgba(210,175,120,0.35)',
+            color: '#7A6250',
             fontSize: 11,
           }}
         >
@@ -44,8 +45,8 @@ export default function StockEntriesTable({ entries }) {
         <div
           className="dashboard-stock-table mt-2.5"
           style={{
-            background: 'rgba(15,23,42,0.72)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: '#F0E8DC',
+            border: '1px solid rgba(210,175,120,0.35)',
             borderRadius: 14,
             maxHeight: 420,
             overflowX: 'hidden',
@@ -56,8 +57,8 @@ export default function StockEntriesTable({ entries }) {
             <div
               className="sticky top-0 z-10 grid grid-cols-[110px_60px_45px_50px_65px] font-bold uppercase leading-[1.1]"
               style={{
-                background: 'rgba(15,23,42,0.92)',
-                color: 'rgba(255,255,255,0.68)',
+                background: '#F0E8DC',
+                color: '#7A6250',
                 fontSize: 10,
                 padding: '8px 6px',
               }}
@@ -75,7 +76,7 @@ export default function StockEntriesTable({ entries }) {
                   key={entry.id}
                   style={{
                     background: 'transparent',
-                    borderBottom: '1px solid rgba(255,255,255,0.07)',
+                    borderBottom: '1px solid rgba(210,175,120,0.25)',
                     fontSize: 11,
                     height: 44,
                     padding: '0 6px',
@@ -83,7 +84,7 @@ export default function StockEntriesTable({ entries }) {
                 >
                   <p
                     className="max-w-[110px] truncate font-bold"
-                    style={{ color: 'rgba(255,255,255,0.92)' }}
+                    style={{ color: '#3B2A1A' }}
                   >
                     {entry.productName}
                   </p>
@@ -92,13 +93,13 @@ export default function StockEntriesTable({ entries }) {
                     style={{
                       background:
                         entry.action === 'Stock In'
-                          ? 'rgba(34,197,94,0.14)'
-                          : 'rgba(239,68,68,0.14)',
+                          ? 'rgba(93,138,82,0.14)'
+                          : 'rgba(184,92,74,0.14)',
                       border:
                         entry.action === 'Stock In'
-                          ? '1px solid rgba(34,197,94,0.22)'
-                          : '1px solid rgba(239,68,68,0.22)',
-                      color: entry.action === 'Stock In' ? '#22c55e' : '#ef4444',
+                          ? '1px solid rgba(93,138,82,0.25)'
+                          : '1px solid rgba(184,92,74,0.25)',
+                      color: entry.action === 'Stock In' ? '#5D8A52' : '#B85C4A',
                     }}
                   >
                     {entry.action}
@@ -106,7 +107,7 @@ export default function StockEntriesTable({ entries }) {
                   <p
                     className="text-right font-bold"
                     style={{
-                      color: entry.quantityChange > 0 ? '#22c55e' : '#ef4444',
+                      color: entry.quantityChange > 0 ? '#5D8A52' : '#B85C4A',
                       fontSize: 12,
                     }}
                   >
@@ -115,13 +116,13 @@ export default function StockEntriesTable({ entries }) {
                   </p>
                   <p
                     className="text-right font-bold"
-                    style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11 }}
+                    style={{ color: '#7A6250', fontSize: 11 }}
                   >
                     {entry.currentStock}
                   </p>
                   <p
                     className={`entry-updated text-right ${entry.updatedState}`}
-                    style={{ color: '#22c55e', fontSize: 11 }}
+                    style={{ color: '#5D8A52', fontSize: 11 }}
                   >
                     {entry.updatedLabel}
                   </p>
@@ -142,8 +143,8 @@ function EmptyState({ action, actionText, text, title }) {
     <div
       className="mt-3 rounded-[22px] border border-dashed px-4 py-7 text-center"
       style={{
-        background: 'rgba(15,23,42,0.48)',
-        borderColor: 'rgba(255,255,255,0.12)',
+        background: '#F0E8DC',
+        borderColor: 'rgba(210,175,120,0.35)',
       }}
     >
       <div className="mx-auto grid h-10 w-10 place-items-center rounded-2xl text-zinc-500">

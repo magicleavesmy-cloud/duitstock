@@ -7,12 +7,12 @@ export default function SummarySection({ formatRM, summary }) {
       <DashboardBox
         accent="teal"
         icon={CalendarIcon}
-        iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
+        iconClassName="text-emerald-700"
         title="Last 10 Days Summary"
       >
         <DashboardStatRow
           icon={ArrowUpIcon}
-          iconClassName="bg-emerald-50 text-emerald-700"
+          iconClassName="text-emerald-700"
           label="Total In Stock Value"
           sublabel="Last 10 Days"
           value={formatRM(summary.last10Days.inValue)}
@@ -20,7 +20,7 @@ export default function SummarySection({ formatRM, summary }) {
         />
         <DashboardStatRow
           icon={ArrowDownIcon}
-          iconClassName="bg-red-50 text-red-600"
+          iconClassName="text-red-600"
           label="Total Stock Out Value"
           sublabel="Last 10 Days"
           value={formatRM(summary.last10Days.outValue)}
@@ -29,14 +29,14 @@ export default function SummarySection({ formatRM, summary }) {
       </DashboardBox>
 
       <DashboardBox
-        accent="blue"
+        accent="gold"
         icon={CalendarIcon}
-        iconClassName="bg-blue-50 text-blue-600 ring-blue-100"
+        iconClassName="text-amber-600"
         title="This Month Summary"
       >
         <DashboardStatRow
           icon={ArrowUpIcon}
-          iconClassName="bg-emerald-50 text-emerald-700"
+          iconClassName="text-emerald-700"
           label="Total In Stock Value"
           sublabel="This Month"
           value={formatRM(summary.thisMonth.inValue)}
@@ -44,7 +44,7 @@ export default function SummarySection({ formatRM, summary }) {
         />
         <DashboardStatRow
           icon={ArrowDownIcon}
-          iconClassName="bg-red-50 text-red-600"
+          iconClassName="text-red-600"
           label="Total Stock Out Value"
           sublabel="This Month"
           value={formatRM(summary.thisMonth.outValue)}

@@ -880,69 +880,67 @@ function DashboardPage({ products, stockChecks, stockInRecords }) {
 }
 
 const productGlassControlStyle = {
-  background: '#F0E8DC',
-  border: '1px solid rgba(210,175,120,0.35)',
+  background: 'rgba(15,23,42,0.72)',
+  border: '1px solid rgba(255,255,255,0.08)',
   borderRadius: '12px',
-  color: '#3B2A1A',
-  boxShadow:
-    'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
+  color: '#ffffff',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
 }
 
 const productLowStockStyle = (active) => ({
   height: '38px',
   borderRadius: '10px',
   border: active
-    ? '1px solid rgba(200,137,58,0.38)'
-    : '1px solid rgba(210,175,120,0.35)',
-  background: active ? 'rgba(200,137,58,0.16)' : '#F0E8DC',
-  color: active ? '#C8893A' : '#7A6250',
+    ? '1px solid rgba(251,146,60,0.30)'
+    : '1px solid rgba(255,255,255,0.06)',
+  background: active ? 'rgba(251,146,60,0.14)' : 'rgba(15,23,42,0.55)',
+  color: '#ffffff',
   fontSize: '13px',
-  fontWeight: 800,
-  boxShadow: active
-    ? 'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)'
-    : '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
+  fontWeight: 600,
+  boxShadow: active ? '0 0 12px rgba(251,146,60,0.18)' : 'none',
 })
 
 const productAddButtonStyle = {
   height: '42px',
   borderRadius: '12px',
-  background: '#C8893A',
-  border: '1px solid rgba(200,137,58,0.45)',
-  boxShadow: '0 0 18px rgba(200,137,58,0.28)',
-  color: '#FCF8F3',
+  background: 'rgba(251,146,60,0.14)',
+  border: '1px solid rgba(251,146,60,0.30)',
+  boxShadow: '0 0 12px rgba(251,146,60,0.18)',
+  color: '#ffffff',
   fontSize: '13px',
-  fontWeight: 800,
+  fontWeight: 600,
 }
 
 const productListCardStyle = {
   minHeight: '68px',
   borderRadius: '16px',
-  border: '1px solid rgba(210,175,120,0.35)',
-  background: '#FCF8F3',
+  border: '1px solid rgba(34,197,94,0.25)',
+  borderTop: '1px solid rgba(34,197,94,0.35)',
+  background: 'linear-gradient(160deg, rgba(20,40,25,0.85) 0%, rgba(8,18,12,0.92) 100%)',
   padding: '12px',
   marginBottom: '4px',
-  boxShadow:
-    '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
+  boxShadow: '0 0 20px rgba(34,197,94,0.08), inset 0 1px 0 rgba(34,197,94,0.10), 0 4px 20px rgba(0,0,0,0.50)',
+  backdropFilter: 'blur(20px) saturate(1.4)',
+  WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
 }
 
 const productStockBadgeStyle = {
   borderRadius: '999px',
-  background: 'rgba(93,138,82,0.13)',
-  border: '1px solid rgba(93,138,82,0.28)',
-  color: '#5D8A52',
+  background: 'rgba(34,197,94,0.15)',
+  border: '1px solid rgba(34,197,94,0.40)',
+  color: '#22c55e',
   padding: '6px 10px',
   fontSize: '11px',
-  fontWeight: 800,
+  fontWeight: 600,
   lineHeight: 1,
-  boxShadow:
-    'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
+  boxShadow: '0 0 10px rgba(34,197,94,0.35), 0 0 20px rgba(34,197,94,0.15)',
 }
 
 const productActionStyle = (tone = 'neutral') => {
   const tones = {
-    orange: ['#C8893A', 'rgba(200,137,58,0.45)', '#FCF8F3'],
-    neutral: ['#F0E8DC', 'rgba(210,175,120,0.35)', '#7A6250'],
-    danger: ['rgba(184,92,74,0.12)', 'rgba(184,92,74,0.24)', '#B85C4A'],
+    orange: ['rgba(251,146,60,0.90)', 'rgba(251,146,60,0.90)', '#ffffff'],
+    neutral: ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.78)'],
+    danger: ['rgba(239,68,68,0.10)', 'rgba(239,68,68,0.20)', '#fca5a5'],
   }
   const [background, border, color] = tones[tone]
 
@@ -951,10 +949,10 @@ const productActionStyle = (tone = 'neutral') => {
     return {
       height: '34px',
       borderRadius: '10px',
-      background: '#C8893A',
-      border: '1px solid rgba(200,137,58,0.45)',
-      boxShadow: '0 0 18px rgba(200,137,58,0.28)',
-      color: '#FCF8F3',
+      background: 'linear-gradient(135deg, #fb923c 0%, #f97316 100%)',
+      border: '1px solid rgba(251,146,60,0.30)',
+      boxShadow: '0 0 12px rgba(251,146,60,0.40)',
+      color: '#ffffff',
       fontSize: '11px',
       fontWeight: 700,
       lineHeight: 1,
@@ -1099,26 +1097,23 @@ function ProductsAdminHero({ summary }) {
     <div
       className="rounded-[18px] p-2.5"
       style={{
-        background: '#FCF8F3',
-        border: '1px solid rgba(210,175,120,0.35)',
-        boxShadow:
-          '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
+        background: 'rgba(15,23,42,0.64)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
       }}
     >
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {items.map(([label, value]) => (
           <div
             className="rounded-xl px-2 py-2"
             key={label}
             style={{
-              background: '#F0E8DC',
-              border: '1px solid rgba(210,175,120,0.35)',
-              boxShadow:
-                'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.06)',
             }}
           >
             <p className="text-[9px] font-bold uppercase tracking-wide text-[var(--text-main)]/45">{label}</p>
-            <p className="mt-0.5 text-[11px] leading-tight font-extrabold text-[var(--text-main)]/90">{value}</p>
+            <p className="mt-0.5 truncate text-[12px] font-extrabold text-[var(--text-main)]/90">{value}</p>
           </div>
         ))}
       </div>
@@ -1530,7 +1525,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
             value={filterDate}
           />
         </div>
-        <div className={`mt-2 grid gap-1.5 grid-cols-1 sm:grid-cols-3`}>
+        <div className={`mt-2 grid gap-1.5 ${canViewProfit ? 'grid-cols-3' : 'grid-cols-2'}`}>
           {canViewProfit ? (
             <>
               <Info label="Sold" value={dailyTotals.soldQty} />
@@ -1598,8 +1593,8 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
             Current Stock:{' '}
             <span
               style={{
-                color: '#5D8A52',
-                textShadow: 'none',
+                color: '#4ade80',
+                textShadow: '0 0 6px rgba(74,222,128,0.50)',
               }}
             >
               {systemQty}

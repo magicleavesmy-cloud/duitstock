@@ -1,15 +1,20 @@
 export default function BottomNav({ activePage, items, onChange }) {
   return (
-    <nav className="bottom-nav fixed inset-x-0 bottom-0 z-40 px-3" style={{paddingBottom: 'max(env(safe-area-inset-bottom), 20px)', background: 'rgba(10,16,30,0.95)'}}>
+    <nav
+      className="bottom-nav fixed inset-x-0 bottom-0 z-40 px-3"
+      style={{
+        background: 'transparent',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 20px)',
+      }}
+    >
       <div
         style={{
           alignItems: 'center',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          background: 'rgba(10,16,30,0.82)',
-          border: '1px solid rgba(255,255,255,0.09)',
+          background: '#FCF8F3',
+          border: '1px solid rgba(210,175,120,0.35)',
           borderRadius: 20,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+          boxShadow:
+            '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
           display: 'flex',
           height: 52,
           justifyContent: 'space-around',
@@ -29,11 +34,15 @@ export default function BottomNav({ activePage, items, onChange }) {
               onClick={() => onChange(item.id)}
               style={{
                 alignItems: 'center',
-                background: isActive ? 'rgba(251,146,60,0.16)' : 'transparent',
-                border: isActive ? '1px solid rgba(251,146,60,0.32)' : '1px solid transparent',
+                background: isActive ? 'rgba(200,137,58,0.16)' : 'transparent',
+                border: isActive
+                  ? '1px solid rgba(200,137,58,0.35)'
+                  : '1px solid transparent',
                 borderRadius: 14,
-                boxShadow: isActive ? '0 0 14px rgba(251,146,60,0.30)' : 'none',
-                color: isActive ? '#fb923c' : 'rgba(255,255,255,0.40)',
+                boxShadow: isActive
+                  ? 'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)'
+                  : 'none',
+                color: isActive ? '#C8893A' : '#B09A85',
                 display: 'flex',
                 flexDirection: 'row',
                 gap: isActive ? 5 : 0,
@@ -50,8 +59,8 @@ export default function BottomNav({ activePage, items, onChange }) {
             >
               <Icon
                 style={{
-                  color: isActive ? '#fb923c' : 'rgba(255,255,255,0.45)',
-                  filter: isActive ? 'drop-shadow(0 0 5px rgba(251,146,60,0.60))' : 'none',
+                  color: isActive ? '#C8893A' : '#B09A85',
+                  filter: 'none',
                   flexShrink: 0,
                   height: 17,
                   width: 17,
@@ -60,10 +69,10 @@ export default function BottomNav({ activePage, items, onChange }) {
               {isActive && (
                 <span
                   style={{
-                    color: '#ffffff',
+                    color: '#3B2A1A',
                     fontSize: 11,
                     fontWeight: 700,
-                    letterSpacing: '-0.01em',
+                    letterSpacing: 0,
                     lineHeight: 1,
                   }}
                 >

@@ -14,7 +14,7 @@ export function DashboardBox({
           <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ring-1 ${iconClassName}`}>
             <Icon className="h-3.5 w-3.5" />
           </span>
-          <h3 className="truncate text-[12px] font-bold leading-tight tracking-tight text-zinc-950">
+          <h3 className="truncate text-[12px] font-bold leading-tight tracking-tight">
             {title}
           </h3>
         </div>
@@ -34,7 +34,7 @@ export function DashboardStatRow({
   valueClassName,
 }) {
   return (
-    <div className="dashboard-card-item rounded-[12px] bg-white shadow-sm ring-1 ring-zinc-100">
+    <div className="dashboard-card-item rounded-[12px] shadow-sm ring-1">
       <div className="flex min-w-0 items-start gap-1.5">
         <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-lg ${iconClassName}`}>
           <Icon className="h-4 w-4" />
@@ -44,7 +44,7 @@ export function DashboardStatRow({
             {label}
           </p>
           {sublabel && (
-            <p className="summary-label mt-0.5 text-zinc-500">
+            <p className="summary-label mt-0.5">
               {sublabel}
             </p>
           )}

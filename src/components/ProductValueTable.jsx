@@ -24,9 +24,11 @@ export default function ProductValueTable({
         <div
           className="product-value-scroll"
           style={{
-            background: 'rgba(2, 11, 18, 0.28)',
-            border: '1px solid rgba(255, 255, 255, 0.10)',
+            background: '#F0E8DC',
+            border: '1px solid rgba(210, 175, 120, 0.35)',
             borderRadius: 14,
+            boxShadow:
+              'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
             maxHeight: 476,
             overflowX: 'hidden',
             overflowY: 'auto',
@@ -41,11 +43,11 @@ export default function ProductValueTable({
               }
 
               .product-value-scroll::-webkit-scrollbar-track {
-                background: transparent;
+                background: #F0E8DC;
               }
 
               .product-value-scroll::-webkit-scrollbar-thumb {
-                background: rgba(255,255,255,0.28);
+                background: #C8893A;
                 border-radius: 999px;
               }
             `}
@@ -99,14 +101,14 @@ export default function ProductValueTable({
           </table>
         </div>
       ) : (
-        <p className="text-[11px] font-semibold text-zinc-500">No products yet</p>
+        <p className="text-[11px] font-semibold">No products yet</p>
       )}
     </DashboardBox>
   )
 }
 
 const baseCellStyle = {
-  borderTop: '1px solid rgba(255, 255, 255, 0.10)',
+  borderTop: '1px solid rgba(210, 175, 120, 0.35)',
   opacity: 1,
   verticalAlign: 'middle',
 }
@@ -118,7 +120,7 @@ const rankCellStyle = {
 
 const productCellStyle = {
   ...baseCellStyle,
-  color: 'rgba(255,255,255,0.92)',
+  color: '#3B2A1A',
   fontSize: 11,
   fontWeight: 500,
   letterSpacing: '-0.1px',
@@ -131,7 +133,7 @@ const productCellStyle = {
 
 const qtyCellStyle = {
   ...baseCellStyle,
-  color: '#38bdf8',
+  color: '#5D8A52',
   fontSize: 12,
   fontWeight: 700,
   padding: '8px 6px',
@@ -141,7 +143,7 @@ const qtyCellStyle = {
 
 const valueCellStyle = {
   ...baseCellStyle,
-  color: '#c084fc',
+  color: '#C8893A',
   fontSize: 12,
   fontWeight: 800,
   opacity: 1,
@@ -164,8 +166,8 @@ function HeaderCell({ align = 'left', children, style = {} }) {
   return (
     <th
       style={{
-        background: 'rgba(15, 30, 42, 0.88)',
-        color: '#CBD5E1',
+        background: '#F0E8DC',
+        color: '#7A6250',
         fontSize: 8,
         fontWeight: 800,
         opacity: 1,
@@ -202,9 +204,9 @@ function ProductTrend({ trend }) {
 
 function getTrendStyle(direction) {
   const colors = {
-    down: '#EF4444',
-    flat: '#64748B',
-    up: '#22C55E',
+    down: '#B85C4A',
+    flat: '#B09A85',
+    up: '#5D8A52',
   }
 
   return {

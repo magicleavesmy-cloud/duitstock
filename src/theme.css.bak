@@ -1,0 +1,296 @@
+:root{
+  --bg:#F7F2EA;
+  --card:#FCF8F3;
+  --primary:#D9A37D;
+  --text:#4B3621;
+  --muted:#9A8572;
+  --shadow1:#ffffff;
+  --shadow2:#d8cfc5;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family: Inter,sans-serif;
+}
+
+.soft-card{
+  background:var(--card);
+  border-radius:24px;
+  box-shadow:
+    8px 8px 16px var(--shadow2),
+   -8px -8px 16px var(--shadow1);
+}
+
+.soft-btn{
+  background:var(--primary);
+  color:white;
+  border-radius:16px;
+  box-shadow:
+    4px 4px 10px rgba(217,163,125,.35);
+}
+
+.soft-input{
+  background:var(--card);
+  border:none;
+  border-radius:14px;
+  box-shadow:
+    inset 4px 4px 8px #d8cfc5,
+    inset -4px -4px 8px white;
+}
+
+.soft-card{
+  background: #FCF8F3 !important;
+  border: 1px solid rgba(210,190,170,.25);
+  border-radius: 24px;
+  box-shadow:
+    6px 6px 14px rgba(190,170,150,.18),
+   -6px -6px 14px rgba(255,255,255,.95) !important;
+}
+
+.soft-card *{
+  color:#4B3621 !important;
+}
+
+.soft-card .text-green-500,
+.soft-card .text-emerald-500{
+  color:#6B8E5A !important;
+}
+
+.soft-card .text-red-500,
+.soft-card .text-rose-500{
+  color:#C96A5A !important;
+}
+
+table{
+  background:#FCF8F3 !important;
+}
+
+thead{
+  background:#F5EDE4 !important;
+}
+
+tbody tr{
+  border-bottom:1px solid rgba(210,190,170,.2);
+}
+
+.bottom-nav{
+  background: rgba(252,248,243,.95) !important;
+  backdrop-filter: blur(12px);
+}
+
+
+/* Force old dark product/check rows into cream UI */
+article,
+section,
+.card,
+.product-card,
+.stock-card {
+  background: #FCF8F3 !important;
+  color: #4B3621 !important;
+  border-color: rgba(210,190,170,.35) !important;
+  box-shadow:
+    5px 5px 12px rgba(190,170,150,.16),
+   -5px -5px 12px rgba(255,255,255,.9) !important;
+}
+
+article *,
+section *,
+.card *,
+.product-card *,
+.stock-card * {
+  color: inherit;
+}
+
+input,
+select,
+textarea {
+  background: #F7F2EA !important;
+  color: #4B3621 !important;
+  border: 1px solid rgba(210,190,170,.4) !important;
+}
+
+button {
+  color: #4B3621;
+}
+
+button[class*="orange"],
+.soft-btn {
+  background: #D9A37D !important;
+  color: white !important;
+}
+
+
+/* Header + bottom nav coffee polish */
+header {
+  background: rgba(252,248,243,.92) !important;
+  border-bottom: 1px solid rgba(210,190,170,.28) !important;
+  box-shadow: 0 8px 22px rgba(190,170,150,.12) !important;
+}
+
+.bottom-nav,
+nav.fixed,
+nav[class*="bottom"] {
+  background: rgba(252,248,243,.96) !important;
+  border: 1px solid rgba(210,190,170,.35) !important;
+  border-radius: 26px 26px 0 0 !important;
+  box-shadow: 0 -8px 28px rgba(190,170,150,.22) !important;
+}
+
+.bottom-nav button,
+nav.fixed button {
+  color: #8A7565 !important;
+}
+
+.bottom-nav button[aria-current="page"],
+nav.fixed button[aria-current="page"],
+.bottom-nav .active,
+nav.fixed .active {
+  background: #F1E2D4 !important;
+  color: #B87345 !important;
+  border-radius: 18px !important;
+  box-shadow: inset 2px 2px 5px rgba(190,170,150,.18),
+              inset -2px -2px 5px rgba(255,255,255,.9) !important;
+}
+
+
+/* Clean cream tables */
+table,
+thead,
+tbody,
+tr,
+td,
+th {
+  background: transparent !important;
+  color: #4B3621 !important;
+}
+
+thead {
+  background: #F1E2D4 !important;
+}
+
+tbody tr {
+  background: #FCF8F3 !important;
+  border-bottom: 1px solid rgba(210,190,170,.28) !important;
+}
+
+tbody tr:nth-child(even) {
+  background: #F8F0E8 !important;
+}
+
+th {
+  color: #8A7565 !important;
+  font-weight: 800 !important;
+}
+
+td {
+  color: #4B3621 !important;
+  font-weight: 600 !important;
+}
+
+/* Product number chips */
+tbody td:first-child span,
+tbody td:first-child div {
+  background: #F1E2D4 !important;
+  color: #9B673F !important;
+  border-color: #E0C7B2 !important;
+}
+
+/* Scrollbar cream */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F7F2EA;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D9C0AA;
+  border-radius: 999px;
+}
+
+
+/* Coffee buttons + chips */
+button {
+  transition: all .18s ease;
+}
+
+button:not(.plain-button) {
+  border-radius: 16px !important;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+[class*="chip"],
+[class*="badge"],
+[class*="pill"],
+.rounded-full {
+  background: #F1E2D4 !important;
+  color: #8A5A38 !important;
+  border: 1px solid #E0C7B2 !important;
+  box-shadow:
+    3px 3px 8px rgba(190,170,150,.18),
+   -3px -3px 8px rgba(255,255,255,.85) !important;
+}
+
+button[type="submit"],
+.add-product-btn,
+.stock-in-btn {
+  background: linear-gradient(135deg,#D9A37D,#C8895E) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 8px 20px rgba(200,137,94,.28) !important;
+}
+
+
+/* Premium spacing + typography */
+body {
+  letter-spacing: -0.015em;
+}
+
+h1,h2,h3 {
+  font-weight: 800 !important;
+  letter-spacing: -0.03em;
+}
+
+p,span,label,td,th {
+  line-height: 1.45;
+}
+
+/* Better card spacing */
+.soft-card,
+section,
+article {
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+}
+
+/* Inputs smoother */
+input,
+select,
+textarea {
+  min-height: 44px;
+  padding: 12px 14px !important;
+  border-radius: 14px !important;
+}
+
+/* Softer shadows globally */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.soft-card:hover,
+article:hover,
+section:hover {
+  transform: translateY(-2px);
+  transition: all .2s ease;
+}
+
+/* Bottom spacing for mobile nav */
+main {
+  padding-bottom: 100px !important;
+}
+
