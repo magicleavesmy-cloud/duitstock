@@ -1,339 +1,107 @@
 :root {
-  --bg: #f7f4ef;
-  --card: #ffffff;
-  --soft: #f4efe8;
+  --app-bg: #f7f4ef;
+  --card-bg: #ffffff;
+  --soft-bg: #f4efe8;
   --border: #e4d9cc;
-
   --text: #1f1f1f;
-  --muted: #7b746b;
-
+  --muted: #756f66;
   --primary: #c88b4a;
-  --success: #2e9b57;
-  --danger: #d64545;
+  --green: #2e9b57;
+  --red: #d64545;
+  --purple: #8b5cf6;
 }
 
 body,
 .app-background {
-  background: var(--bg);
-  color: var(--text);
-  font-family: Inter, system-ui, sans-serif;
-}
-
-/* cards */
-section,
-article,
-.soft-card {
-  background: var(--card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 20px !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,.04) !important;
-}
-
-/* inputs */
-input,
-select,
-textarea {
-  background: var(--card) !important;
-  border: 1px solid var(--border) !important;
+  background: var(--app-bg) !important;
   color: var(--text) !important;
 }
 
-/* tables */
-table {
-  background: var(--card);
+.app-shell,
+.app-background main {
+  background: var(--app-bg) !important;
 }
 
-thead {
-  background: var(--soft);
-}
-
-tbody tr {
-  border-bottom: 1px solid var(--border);
-}
-
-/* buttons */
-button {
-  border-radius: 14px;
-}
-
-.add-product-btn,
-button[type="submit"] {
-  background: var(--primary) !important;
-  color: white !important;
-}
-
-/* text */
-h1,h2,h3,h4 {
-  color: var(--text);
-}
-
-p,span,label {
-  color: var(--muted);
-}
-
-/* important values only */
-.text-green-400,
-.text-green-500,
-.text-emerald-500 {
-  color: var(--success) !important;
-}
-
-.text-red-400,
-.text-red-500,
-.text-rose-500 {
-  color: var(--danger) !important;
-}
-
-/* nav */
-.bottom-nav,
-nav.fixed {
-  background: white !important;
-  border-top: 1px solid var(--border);
-}
-
-/* Data hierarchy */
-.metric-value,
-.text-lg,
-.text-xl,
-.text-2xl,
-.font-bold {
-  color: #1f1f1f !important;
-  font-weight: 700 !important;
-}
-
-.metric-label,
-.text-xs,
-.text-sm {
-  color: #7b746b !important;
-  font-weight: 500 !important;
-}
-
-/* Stock chips */
-.rounded-full {
-  border: 1px solid var(--border) !important;
-  background: var(--soft) !important;
-}
-
-/* Better spacing for tables */
-td, th {
-  padding: 12px 10px !important;
-}
-
-/* Highlight total values */
-.total-value,
-.summary-value {
-  font-size: 1.15rem;
-  font-weight: 800;
-}
-
-/* Better product rows */
-tbody tr:hover {
-  background: #faf7f2;
-}
-
-
-/* Faster data entry UX */
-input,
-select {
-  min-height: 44px;
-  font-size: 15px;
-  padding: 10px 14px !important;
-}
-
-button {
-  min-height: 42px;
-  padding: 0 16px !important;
-  font-weight: 600;
-}
-
-/* Primary action stronger */
-.add-product-btn,
-.stock-in-btn,
-button[type="submit"] {
-  background: var(--primary) !important;
-  box-shadow: none !important;
-}
-
-/* Save buttons compact */
-.save-btn {
-  min-width: 74px;
-  border-radius: 12px !important;
-}
-
-/* Product rows tighter */
-.product-row,
-tbody tr {
-  min-height: 56px;
-}
-
-/* Search bar sticky */
-.search-bar,
-input[type="search"] {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: white !important;
-}
-
-
-/* Mobile data table fit */
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  font-size: 11px !important;
-  white-space: nowrap;
-}
-
-td {
-  font-size: 13px !important;
-  vertical-align: middle;
-}
-
-td input {
-  width: 100%;
-  min-width: 48px;
-}
-
-/* Prevent product names breaking layout */
-.product-name,
-td:first-child {
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Horizontal scroll only when truly needed */
-.table-wrap,
-.overflow-x-auto {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Keep action column usable */
-td:last-child,
-th:last-child {
-  white-space: nowrap;
-}
-
-
-/* Clean fixed header/nav for data app */
+/* Header */
+.app-header,
 header {
   background: #ffffff !important;
   border-bottom: 1px solid var(--border) !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,.03) !important;
+  box-shadow: none !important;
 }
 
-header h1,
-header h2 {
+.header-title,
+.header-greeting {
   color: var(--text) !important;
 }
 
+/* Cards */
+.dashboard-card,
+.dashboard-card-item,
+.stock-overview-card,
+.summary-section,
+.product-value-table,
+.stock-entries-table,
+section,
+article {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+/* Tables */
+.table-header,
+thead {
+  background: var(--soft-bg) !important;
+}
+
+.table-row,
+tbody tr {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* Nav */
 .bottom-nav,
 nav.fixed {
   background: #ffffff !important;
   border-top: 1px solid var(--border) !important;
-  box-shadow: 0 -2px 10px rgba(0,0,0,.04) !important;
-}
-
-.bottom-nav button,
-nav.fixed button {
-  color: var(--muted) !important;
-  background: transparent !important;
-}
-
-.bottom-nav .active,
-nav.fixed .active,
-nav button[aria-current="page"] {
-  color: var(--primary) !important;
-  background: #f4efe8 !important;
-  font-weight: 700 !important;
-}
-
-
-/* Clean card system for data app */
-section,
-article,
-.soft-card,
-.card {
   box-shadow: none !important;
-  border: 1px solid var(--border) !important;
-  background: #ffffff !important;
 }
 
-section:hover,
-article:hover,
-.soft-card:hover,
-.card:hover {
-  transform: none !important;
+/* Buttons */
+.primary-button,
+.add-product-btn,
+.stock-in-btn,
+button[type='submit'] {
+  background: var(--primary) !important;
+  color: white !important;
 }
 
-/* Clear section separation */
-section + section,
-article + article {
-  margin-top: 12px;
+/* Text */
+p,
+span,
+label {
+  color: inherit;
 }
 
-/* Reduce rounded too much */
-section,
-article,
-input,
-select,
-button {
-  border-radius: 14px !important;
+.text-zinc-500 {
+  color: var(--muted) !important;
 }
 
-/* Keep main summary slightly stronger */
-.summary-card,
-.metric-card {
-  border-left: 4px solid var(--primary) !important;
+.text-emerald-700 {
+  color: var(--green) !important;
 }
 
-
-/* Status system */
-.low-stock {
-  background: rgba(214,69,69,.08) !important;
-  color: var(--danger) !important;
-  border: 1px solid rgba(214,69,69,.18) !important;
+.text-red-600 {
+  color: var(--red) !important;
 }
 
-.good-stock {
-  background: rgba(46,155,87,.08) !important;
-  color: var(--success) !important;
-  border: 1px solid rgba(46,155,87,.18) !important;
-}
-
-.warning-stock {
-  background: rgba(200,139,74,.08) !important;
+.text-amber-600 {
   color: var(--primary) !important;
-  border: 1px solid rgba(200,139,74,.18) !important;
 }
 
-/* Product rows visual priority */
-.product-row {
-  border-left: 3px solid transparent;
+.text-purple-700 {
+  color: var(--purple) !important;
 }
-
-.product-row.low-stock {
-  border-left-color: var(--danger);
-}
-
-.product-row.good-stock {
-  border-left-color: var(--success);
-}
-
-/* Summary boxes cleaner */
-.summary-card .metric-value {
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.summary-card .metric-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .03em;
-}
-

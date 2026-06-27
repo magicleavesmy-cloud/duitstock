@@ -1,39 +1,46 @@
 export const duitStockNeumorphicTheme = {
   colors: {
-    background: '#F7F2EA',
-    card: '#FCF8F3',
-    cardStrong: '#F0E8DC',
-    cardGradient: 'linear-gradient(180deg, #FCF8F3 0%, #F7F2EA 100%)',
-    border: 'rgba(210,175,120,0.35)',
-    borderStrong: 'rgba(200,137,58,0.45)',
-    textPrimary: '#3B2A1A',
-    textSecondary: '#7A6250',
-    textMuted: '#B09A85',
-    orange: '#C8893A',
-    orangeDeep: '#B9782F',
-    green: '#5D8A52',
-    red: '#B85C4A',
+    background: '#F7F4EF',
+    card: '#FFFFFF',
+    cardStrong: '#F4EFE8',
+    cardGradient: 'linear-gradient(180deg, #FFFFFF 0%, #FAF7F2 100%)',
+
+    border: '#E4D9CC',
+    borderStrong: '#D6C4B2',
+
+    textPrimary: '#1F1F1F',
+    textSecondary: '#5F5850',
+    textMuted: '#8A8278',
+
+    orange: '#C88B4A',
+    orangeDeep: '#A96F34',
+    green: '#2E9B57',
+    red: '#D64545',
   },
+
   shadows: {
-    card: '6px 6px 16px rgba(190,160,120,0.18), -6px -6px 16px rgba(255,255,255,0.90)',
-    innerHighlight: 'inset 3px 3px 7px rgba(190,160,120,0.18), inset -3px -3px 7px rgba(255,255,255,0.90)',
-    orangeGlow: '0 0 18px rgba(200,137,58,0.28)',
+    card: '0 4px 12px rgba(0,0,0,0.04)',
+    innerHighlight: 'none',
+    orangeGlow: 'none',
   },
+
   blur: {
     glass: 'none',
     glassStrong: 'none',
   },
+
   radius: {
-    card: '18px',
-    panel: '20px',
+    card: '16px',
+    panel: '18px',
     control: '12px',
     pill: '999px',
   },
+
   spacing: {
     xs: '4px',
     sm: '8px',
     md: '12px',
     lg: '16px',
-    xl: '24px',
+    xl: '20px',
   },
 }
