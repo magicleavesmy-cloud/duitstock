@@ -130,7 +130,7 @@ function App() {
     : roleHomePages[currentUserRole]
 
   function login(password) {
-    const role = password === '4321' ? 'admin' : password === '1234' ? 'staff' : ''
+    const role = password === '4321' ? 'admin' : password === '7986' ? 'staff' : ''
 
     if (!role) {
       showToast('error', 'Wrong password')
