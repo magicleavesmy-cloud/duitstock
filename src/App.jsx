@@ -9,7 +9,31 @@ import {
   setDoc,
   writeBatch,
 } from 'firebase/firestore'
+import BottomNav from './components/BottomNav'
+import Header from './components/Header'
+import ProductValueTable from './components/ProductValueTable'
+import StockEntriesTable from './components/StockEntriesTable'
+import StockOverview from './components/StockOverview'
+import SummarySection from './components/SummarySection'
 import { db, isFirebaseConfigured } from './firebase'
+import './App.css'
+import {
+  AlertIcon,
+  ArrowsIcon,
+  BoxIcon,
+  CalendarIcon,
+  ChartIcon,
+  CheckIcon,
+  CloseIcon,
+  DashboardIcon,
+  PlusBoxIcon,
+  ProfitIcon,
+  SaveIcon,
+  SearchIcon,
+  SettingsIcon,
+  TagIcon,
+  TrashIcon,
+} from './icons'
 
 const PRODUCTS_KEY = 'duitstock-products'
 const STOCK_CHECKS_KEY = 'duitstock-stock-checks'
@@ -672,7 +696,7 @@ function App() {
 
   return (
     <div className="app-background min-h-screen text-zinc-950">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-2 pb-20 pt-2.5 sm:px-3 sm:pt-4 lg:px-5">
+      <div className={`app-shell mx-auto flex min-h-screen w-full max-w-6xl flex-col px-2 pb-20 pt-2.5 sm:px-3 sm:pt-4 lg:px-5 ${visibleActivePage === 'dashboard' ? 'dashboard-shell' : ''}`}>
         <Header
           activePage={visibleActivePage}
           currentUserRole={currentUserRole}
@@ -781,47 +805,6 @@ function App() {
   )
 }
 
-function Header({
-  activePage,
-  currentUserRole,
-  onLogout,
-  syncStatus,
-  syncStatusText,
-  visibleNavItems,
-}) {
-  const title = visibleNavItems.find((item) => item.id === activePage)?.label
-  const greeting = getGreeting()
-
-  return (
-    <header className="mb-2.5 flex items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <div className="app-logo shrink-0">
-          <BoxIcon className="h-[18px] w-[18px]" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold text-zinc-500">{greeting}, DuitStock</p>
-          <h1 className="truncate text-lg font-semibold tracking-tight text-zinc-950 sm:text-xl">
-            {title}
-          </h1>
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-1.5">
-        <span className="rounded-full bg-white/80 px-2 py-1 text-[10px] font-bold uppercase text-zinc-600 shadow-sm ring-1 ring-zinc-200">
-          {currentUserRole}
-        </span>
-        <SyncStatusPill status={syncStatus} text={syncStatusText} />
-        <button
-          className="secondary-button h-8 rounded-full px-2 text-[10px]"
-          onClick={onLogout}
-          type="button"
-        >
-          Logout
-        </button>
-      </div>
-    </header>
-  )
-}
-
 function LoginPage({ onLogin }) {
   const [password, setPassword] = useState('')
 
@@ -867,256 +850,125 @@ function LoginPage({ onLogin }) {
 
 function DashboardPage({ products, stockChecks, stockInRecords }) {
   const summary = buildDashboardSummary({ products, stockChecks, stockInRecords })
+  const topValueProducts = summary.topValueProducts.map((product) => ({
+    ...product,
+    trend: getProductDashboardTrend(product, summary.recentEntries),
+  }))
 
   return (
-    <section className="space-y-2.5">
+    <section className="dashboard-page space-y-2.5">
       <div>
         <h2 className="text-base font-semibold tracking-tight text-zinc-950 sm:text-lg">
-          DuitStock Dashboard
+          <span className="dashboard-brand-word">DuitStock</span> Dashboard
         </h2>
         <p className="mt-0.5 text-xs font-semibold text-zinc-500">
           Read-only stock summary.
         </p>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start gap-2.5">
-        <div className="min-w-0 space-y-2.5">
-          <DashboardBox
-            accent="green"
-            icon={BoxIcon}
-            iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
-            title="Stock Overview"
-          >
-            <DashboardStatRow
-              icon={BoxIcon}
-              iconClassName="bg-emerald-50 text-emerald-700"
-              label="Products"
-              value={summary.totalProducts}
-              valueClassName="text-emerald-700"
-            />
-            <DashboardStatRow
-              icon={LayersIcon}
-              iconClassName="bg-blue-50 text-blue-600"
-              label="Total Stock Qty"
-              value={summary.totalStockQty}
-              valueClassName="text-blue-600"
-            />
-            <DashboardStatRow
-              icon={WalletIcon}
-              iconClassName="bg-purple-50 text-purple-700"
-              label="Total Stock Value"
-              value={formatRM(summary.totalStockValue)}
-              valueClassName="text-purple-700"
-            />
-          </DashboardBox>
-
-          <DashboardBox
-            accent="teal"
-            icon={CalendarIcon}
-            iconClassName="bg-emerald-50 text-emerald-700 ring-emerald-100"
-            title="Last 10 Days Summary"
-          >
-            <DashboardStatRow
-              icon={ArrowUpIcon}
-              iconClassName="bg-emerald-50 text-emerald-700"
-              label="Total In Stock Value"
-              sublabel="Last 10 Days"
-              value={formatRM(summary.last10Days.inValue)}
-              valueClassName="text-emerald-700"
-            />
-            <DashboardStatRow
-              icon={ArrowDownIcon}
-              iconClassName="bg-red-50 text-red-600"
-              label="Total Stock Out Value"
-              sublabel="Last 10 Days"
-              value={formatRM(summary.last10Days.outValue)}
-              valueClassName="text-red-600"
-            />
-          </DashboardBox>
-
-          <DashboardBox
-            accent="blue"
-            icon={CalendarIcon}
-            iconClassName="bg-blue-50 text-blue-600 ring-blue-100"
-            title="This Month Summary"
-          >
-            <DashboardStatRow
-              icon={ArrowUpIcon}
-              iconClassName="bg-emerald-50 text-emerald-700"
-              label="Total In Stock Value"
-              sublabel="This Month"
-              value={formatRM(summary.thisMonth.inValue)}
-              valueClassName="text-emerald-700"
-            />
-            <DashboardStatRow
-              icon={ArrowDownIcon}
-              iconClassName="bg-red-50 text-red-600"
-              label="Total Stock Out Value"
-              sublabel="This Month"
-              value={formatRM(summary.thisMonth.outValue)}
-              valueClassName="text-red-600"
-            />
-          </DashboardBox>
-        </div>
-
-        <DashboardBox
-          accent="gold"
-          className="most-value-card"
-          icon={StarIcon}
-          iconClassName="bg-amber-50 text-amber-600 ring-amber-100"
-          title="Most Value Products"
-        >
-          {summary.topValueProducts.length ? (
-            <div className="most-value-list">
-              {summary.topValueProducts.map((product, index) => {
-                const statusClass = getProductUpdatedAtState(product.updatedAt)
-
-                return (
-                  <div
-                    className="most-value-item flex items-center gap-1.5 leading-[1.1]"
-                    key={product.id}
-                  >
-                    <span className={`most-value-rank ${statusClass}`}>
-                      {index + 1}
-                    </span>
-                    <p className="max-w-[55%] flex-1 truncate font-bold text-zinc-950">
-                      {product.name}
-                    </p>
-                    <p className="max-w-[40%] shrink-0 truncate text-right font-bold text-zinc-950">
-                      {formatRM(product.stockValue)}
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-[11px] font-semibold text-zinc-500">No products yet</p>
-          )}
-        </DashboardBox>
-      </div>
-
-      <DashboardStockEntries entries={summary.recentEntries} />
+      <StockOverview formatRM={formatRM} summary={summary} />
+      <SummarySection formatRM={formatRM} summary={summary} />
+      <ProductValueTable
+        formatNumber={formatNumber}
+        formatRM={formatRM}
+        products={topValueProducts}
+        totalStockQty={summary.totalStockQty}
+      />
+      <StockEntriesTable entries={summary.recentEntries} />
     </section>
   )
 }
 
-function DashboardBox({ accent, children, className = '', icon: Icon, iconClassName, title }) {
-  return (
-    <section className={`dashboard-card dashboard-card-${accent} ${className}`.trim()}>
-      <div className="flex items-center gap-1.5">
-        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ring-1 ${iconClassName}`}>
-          <Icon className="h-3.5 w-3.5" />
-        </span>
-        <h3 className="text-[12px] font-bold leading-tight tracking-tight text-zinc-950">
-          {title}
-        </h3>
-      </div>
-      <div className="mt-2 space-y-1.5">{children}</div>
-    </section>
-  )
+const productGlassControlStyle = {
+  background: 'rgba(15,23,42,0.72)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: '12px',
+  color: '#ffffff',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
 }
 
-function DashboardStatRow({
-  icon: Icon,
-  iconClassName,
-  label,
-  sublabel,
-  value,
-  valueClassName,
-}) {
-  return (
-    <div className="dashboard-card-item rounded-[12px] bg-white shadow-sm ring-1 ring-zinc-100">
-      <div className="flex min-w-0 items-start gap-1.5">
-        <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-lg ${iconClassName}`}>
-          <Icon className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="dashboard-label">
-            {label}
-          </p>
-          {sublabel && (
-            <p className="summary-label mt-0.5 text-zinc-500">
-              {sublabel}
-            </p>
-          )}
-        </div>
-      </div>
-      <p className={`dashboard-value ${valueClassName}`}>
-        {value}
-      </p>
-    </div>
-  )
+const productLowStockStyle = (active) => ({
+  height: '38px',
+  borderRadius: '10px',
+  border: active
+    ? '1px solid rgba(251,146,60,0.30)'
+    : '1px solid rgba(255,255,255,0.06)',
+  background: active ? 'rgba(251,146,60,0.14)' : 'rgba(15,23,42,0.55)',
+  color: '#ffffff',
+  fontSize: '13px',
+  fontWeight: 600,
+  boxShadow: active ? '0 0 12px rgba(251,146,60,0.18)' : 'none',
+})
+
+const productAddButtonStyle = {
+  height: '42px',
+  borderRadius: '12px',
+  background: 'rgba(251,146,60,0.14)',
+  border: '1px solid rgba(251,146,60,0.30)',
+  boxShadow: '0 0 12px rgba(251,146,60,0.18)',
+  color: '#ffffff',
+  fontSize: '13px',
+  fontWeight: 600,
 }
 
-function DashboardStockEntries({ entries }) {
-  return (
-    <section className="rounded-[18px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-bold tracking-tight text-zinc-950">
-            Last 20 Stock Entries
-          </h3>
-          <p className="mt-0.5 text-[11px] font-semibold text-zinc-500">
-            Latest stock transaction logs.
-          </p>
-        </div>
-        <span className="rounded-full bg-zinc-50 px-2 py-0.5 text-[11px] font-bold text-zinc-600 ring-1 ring-zinc-200">
-          {entries.length}
-        </span>
-      </div>
+const productListCardStyle = {
+  minHeight: '68px',
+  borderRadius: '16px',
+  border: '1px solid rgba(80,200,120,0.18)',
+  borderTop: '1px solid rgba(80,200,120,0.28)',
+  background: 'linear-gradient(160deg, rgba(30,50,35,0.60) 0%, rgba(10,20,15,0.75) 100%)',
+  padding: '12px',
+  boxShadow: '0 0 18px rgba(50,180,90,0.08), inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 20px rgba(0,0,0,0.40)',
+  backdropFilter: 'blur(20px) saturate(1.4)',
+  WebkitBackdropFilter: 'blur(20px) saturate(1.4)',
+}
 
-      {entries.length ? (
-        <div className="mt-2.5 overflow-x-auto rounded-[14px] ring-1 ring-zinc-100">
-          <div className="min-w-[330px] table-fixed">
-            <div className="sticky top-0 z-10 grid grid-cols-[110px_60px_45px_50px_65px] bg-zinc-50 px-1.5 py-1.5 text-[9px] font-bold uppercase leading-[1.1] text-zinc-500">
-              <span>Product</span>
-              <span>Action</span>
-              <span className="text-right">Qty</span>
-              <span className="text-right">Stock</span>
-              <span className="text-right">Updated</span>
-            </div>
-            <div className="divide-y divide-zinc-100 bg-white">
-              {entries.map((entry) => (
-                <article
-                  className="grid grid-cols-[110px_60px_45px_50px_65px] items-center px-1.5 py-1.5 text-[10px] leading-[1.1]"
-                  key={entry.id}
-                >
-                  <p className="max-w-[110px] truncate font-bold text-zinc-950">
-                    {entry.productName}
-                  </p>
-                  <span
-                    className={`w-fit rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-[1.1] ring-1 ${
-                      entry.action === 'Stock In'
-                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
-                        : 'bg-red-50 text-red-700 ring-red-100'
-                    }`}
-                  >
-                    {entry.action}
-                  </span>
-                  <p
-                    className={`text-right text-[11px] font-bold ${
-                      entry.quantityChange > 0 ? 'text-emerald-700' : 'text-red-600'
-                    }`}
-                  >
-                    {entry.quantityChange > 0 ? '+' : ''}
-                    {entry.quantityChange}
-                  </p>
-                  <p className="text-right text-[11px] font-bold text-zinc-700">
-                    {entry.currentStock}
-                  </p>
-                  <p className={`entry-updated text-right ${entry.updatedState}`}>
-                    {entry.updatedLabel}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <EmptyState title="No stock entries yet" text="Saved stock transactions will appear here." />
-      )}
-    </section>
-  )
+const productStockBadgeStyle = {
+  borderRadius: '999px',
+  background: 'rgba(34,197,94,0.15)',
+  border: '1px solid rgba(34,197,94,0.40)',
+  color: '#22c55e',
+  padding: '6px 10px',
+  fontSize: '11px',
+  fontWeight: 600,
+  lineHeight: 1,
+  boxShadow: '0 0 10px rgba(34,197,94,0.35), 0 0 20px rgba(34,197,94,0.15)',
+}
+
+const productActionStyle = (tone = 'neutral') => {
+  const tones = {
+    orange: ['rgba(251,146,60,0.90)', 'rgba(251,146,60,0.90)', '#ffffff'],
+    neutral: ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.78)'],
+    danger: ['rgba(239,68,68,0.10)', 'rgba(239,68,68,0.20)', '#fca5a5'],
+  }
+  const [background, border, color] = tones[tone]
+
+  const isOrange = tone === 'orange'
+  if (isOrange) {
+    return {
+      height: '34px',
+      borderRadius: '10px',
+      background: 'linear-gradient(135deg, #fb923c 0%, #f97316 100%)',
+      border: '1px solid rgba(251,146,60,0.30)',
+      boxShadow: '0 0 12px rgba(251,146,60,0.40)',
+      color: '#ffffff',
+      fontSize: '11px',
+      fontWeight: 700,
+      lineHeight: 1,
+      padding: '0 14px',
+    }
+  }
+  return {
+    height: '26px',
+    borderRadius: '999px',
+    background,
+    border: `1px solid ${border}`,
+    color,
+    padding: '0 9px',
+    fontSize: '10px',
+    fontWeight: 700,
+    lineHeight: 1,
+  }
 }
 
 function ProductsPage({
@@ -1156,21 +1008,23 @@ function ProductsPage({
   const productSummary = useMemo(() => buildProductSummary(filteredProducts), [filteredProducts])
 
   return (
-    <section className="space-y-2.5">
+    <section className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row">
         <label className="relative flex-1">
           <span className="sr-only">Search products</span>
-          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
           <input
-            className="h-9 w-full rounded-xl border border-zinc-200 bg-white pl-9 pr-3 text-xs outline-none transition focus:border-zinc-400 focus:ring-4 focus:ring-zinc-200"
+            className="w-full text-xs font-semibold outline-none transition placeholder:text-white/40 focus:ring-4 focus:ring-orange-400/15"
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search products"
+            style={{ ...productGlassControlStyle, height: '42px', padding: '0 14px 0 36px' }}
             value={query}
           />
         </label>
         <select
-          className="h-9 rounded-xl border border-zinc-200 bg-white px-3 text-xs outline-none transition focus:border-zinc-400 focus:ring-4 focus:ring-zinc-200"
+          className="text-xs font-semibold outline-none transition focus:ring-4 focus:ring-orange-400/15"
           onChange={(event) => setCategory(event.target.value)}
+          style={{ ...productGlassControlStyle, height: '40px', padding: '0 14px' }}
           value={category}
         >
           <option value="all">All categories</option>
@@ -1183,10 +1037,9 @@ function ProductsPage({
       </div>
 
       <button
-        className={`secondary-button h-9 w-full sm:w-fit ${
-          showLowStockOnly ? 'bg-rose-50 text-rose-700 ring-rose-100' : ''
-        }`}
+        className="w-full transition hover:-translate-y-0.5 sm:w-fit"
         onClick={() => setShowLowStockOnly((current) => !current)}
+        style={productLowStockStyle(showLowStockOnly)}
         type="button"
       >
         Low Stock
@@ -1195,13 +1048,18 @@ function ProductsPage({
       {canViewCosts && <ProductsAdminHero summary={productSummary} />}
 
       {canAddProducts && (
-        <button className="primary-button w-full sm:w-fit" onClick={onNew} type="button">
+        <button
+          className="add-product-btn w-full transition hover:-translate-y-0.5 sm:w-fit"
+          onClick={onNew}
+          style={productAddButtonStyle}
+          type="button"
+        >
           Add product
         </button>
       )}
 
       {filteredProducts.length ? (
-        <div className="space-y-1">
+        <div className="grid gap-2">
           {filteredProducts.map((product) => (
             <ProductCard
               key={product.id}
@@ -1227,13 +1085,36 @@ function ProductsPage({
 }
 
 function ProductsAdminHero({ summary }) {
+  const items = [
+    ['Frozen Capital', formatRM(summary.totalCostValue)],
+    ['Sale Value', formatRM(summary.totalSaleValue)],
+    ['Profit', formatRM(summary.totalProfit)],
+    ['Margin', formatPercent(summary.marginPercent)],
+  ]
+
   return (
-    <div className="rounded-[18px] bg-white p-2.5 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
+    <div
+      className="rounded-[18px] p-2.5"
+      style={{
+        background: 'rgba(15,23,42,0.64)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+      }}
+    >
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-        <Info label="Frozen Capital" value={formatRM(summary.totalCostValue)} />
-        <Info label="Sale Value" value={formatRM(summary.totalSaleValue)} />
-        <Info label="Profit" value={formatRM(summary.totalProfit)} />
-        <Info label="Margin" value={formatPercent(summary.marginPercent)} />
+        {items.map(([label, value]) => (
+          <div
+            className="rounded-xl px-2 py-2"
+            key={label}
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            <p className="text-[9px] font-bold uppercase tracking-wide text-white/45">{label}</p>
+            <p className="mt-0.5 truncate text-[12px] font-extrabold text-white/90">{value}</p>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -1247,7 +1128,6 @@ function ProductCard({
   onEdit,
   onStockIn,
 }) {
-  const isLow = Number(product.stockQty) <= Number(product.minimumStock)
   const costPrice = Number(product.costPrice) || 0
   const sellingPrice = Number(product.sellingPrice) || 0
   const stock = Number(product.stockQty) || 0
@@ -1257,14 +1137,17 @@ function ProductCard({
   const title = [product.name, product.category].filter(Boolean).join(' • ')
 
   return (
-    <article className="rounded-[14px] bg-white px-2 py-1.5 shadow-sm shadow-zinc-200/50 ring-1 ring-zinc-200">
-      <div className="flex items-start justify-between gap-2">
+    <article
+      className="flex items-center justify-between gap-3"
+      style={productListCardStyle}
+    >
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[13px] font-bold leading-tight text-zinc-950">
+          <h2 className="truncate text-[13px] font-semibold leading-tight text-white/95">
             {title}
           </h2>
           {canViewCosts ? (
-            <div className="mt-0.5 space-y-0.5 text-[11px] font-medium leading-tight text-zinc-600">
+            <div className="mt-1 space-y-0.5 text-[10px] font-medium leading-tight text-white/48">
               <p className="truncate">
                 Cost {formatCompactRM(costPrice)} | Sell {formatCompactRM(sellingPrice)} | Margin{' '}
                 {formatCompactPercent(profitMargin)}
@@ -1275,47 +1158,46 @@ function ProductCard({
               </p>
             </div>
           ) : (
-            <p className="mt-0.5 truncate text-[11px] font-medium leading-tight text-zinc-500">
+            <p className="mt-1 truncate text-[10px] font-medium leading-tight text-white/48">
               Sell {formatCompactRM(sellingPrice)}
             </p>
           )}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${
-              isLow ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
-            }`}
-          >
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className="stock-badge shrink-0">
             Stock {Number(product.stockQty) || 0}
           </span>
+          <div className="flex flex-wrap justify-end gap-1">
+            <button
+              className="transition hover:-translate-y-0.5"
+              style={productActionStyle('orange')}
+              onClick={() => onStockIn(product)}
+              type="button"
+            >
+              Stock In
+            </button>
+            {canManageProducts && (
+              <>
+                <button
+                  className="transition hover:-translate-y-0.5"
+                  onClick={() => onEdit(product)}
+                  style={productActionStyle('neutral')}
+                  type="button"
+                >
+                  Edit
+                </button>
+                <button
+                  className="transition hover:-translate-y-0.5"
+                  onClick={() => onDelete(product.id)}
+                  style={productActionStyle('danger')}
+                  type="button"
+                >
+                  Del
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="mt-1 flex gap-1">
-        <button
-          className="primary-button h-8 flex-1 rounded-lg px-2 text-[11px]"
-          onClick={() => onStockIn(product)}
-          type="button"
-        >
-          Stock In
-        </button>
-        {canManageProducts && (
-          <>
-            <button
-              className="secondary-button h-8 flex-1 rounded-lg px-2 text-[11px]"
-              onClick={() => onEdit(product)}
-              type="button"
-            >
-              Edit
-            </button>
-            <button
-              className="danger-button h-8 flex-1 rounded-lg px-2 text-[11px]"
-              onClick={() => onDelete(product.id)}
-              type="button"
-            >
-              Del
-            </button>
-          </>
-        )}
       </div>
     </article>
   )
@@ -1622,20 +1504,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
           />
         )}
 
-        {visibleProducts.length > 0 && (
-          <div className="fixed inset-x-0 bottom-16 z-30 flex justify-center px-3 pointer-events-none">
-            <div className="w-full max-w-sm rounded-full border border-white/70 bg-white/78 p-1 shadow-[0_12px_32px_rgba(24,24,27,0.18)] backdrop-blur-2xl pointer-events-auto">
-              <button
-                className="primary-button h-11 w-full rounded-full text-xs shadow-none"
-                disabled={isSaving}
-                type="submit"
-              >
-                <SaveIcon className="mr-2 h-5 w-5" />
-                {isSaving ? 'Saving...' : 'Complete Stock Check'}
-              </button>
-            </div>
-          </div>
-        )}
+
       </form>
 
       <div className="rounded-[20px] bg-white p-3 shadow-sm shadow-zinc-200/70 ring-1 ring-zinc-200">
@@ -1720,7 +1589,15 @@ function StockCheckRow({ count, isSaving, onChange, onEnter, onSave, product }) 
         <div className="min-w-0">
           <p className="truncate text-[12px] font-bold leading-tight">{product.name}</p>
           <p className="mt-0.5 text-[10px] font-bold leading-tight text-zinc-500">
-            Current Stock: {systemQty}
+            Current Stock:{' '}
+            <span
+              style={{
+                color: '#4ade80',
+                textShadow: '0 0 6px rgba(74,222,128,0.50)',
+              }}
+            >
+              {systemQty}
+            </span>
           </p>
           <p className={`product-updated ${updatedAtState}`}>
             {lastUpdatedLabel}
@@ -2589,14 +2466,17 @@ function StockInEntryBox({ date, products, onSave }) {
         </div>
       </div>
 
-      <button
-        className="primary-button mt-2 h-11 w-full"
-        disabled={isSaving || !rows.length}
-        type="submit"
-      >
-        <SaveIcon className="mr-2 h-5 w-5" />
-        {isSaving ? 'Saving...' : 'Save Stock In'}
-      </button>
+      <div className="mt-2 flex justify-end">
+        <button
+          className="primary-button h-10"
+          disabled={isSaving || !rows.length}
+          style={{ minWidth: 140, borderRadius: 12 }}
+          type="submit"
+        >
+          <SaveIcon className="mr-2 h-4 w-4" />
+          {isSaving ? 'Saving...' : 'Save Stock In'}
+        </button>
+      </div>
     </form>
   )
 }
@@ -2956,38 +2836,6 @@ function ProductModal({ categories, product, onClose, onSave }) {
     </div>
   )
 }
-function BottomNav({ activePage, items, onChange }) {
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 px-2.5 pb-[calc(env(safe-area-inset-bottom)+0.4rem)]">
-      <div
-        className="mx-auto grid max-w-lg gap-0.5 rounded-[20px] border border-white/70 bg-white/78 p-1 shadow-[0_12px_34px_rgba(24,24,27,0.16)] backdrop-blur-2xl"
-        style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
-      >
-        {items.map((item) => {
-          const Icon = item.icon
-          const isActive = activePage === item.id
-
-          return (
-            <button
-              className={`relative flex h-10 flex-col items-center justify-center gap-0.5 rounded-[16px] text-[9px] font-bold transition-all duration-300 ${
-                isActive
-                  ? 'scale-[1.02] bg-zinc-950 text-white shadow-lg shadow-zinc-950/20'
-                  : 'text-zinc-500 hover:bg-white/70 hover:text-zinc-900'
-              }`}
-              key={item.id}
-              onClick={() => onChange(item.id)}
-              type="button"
-            >
-              <Icon className="h-3.5 w-3.5 transition-transform duration-300" />
-              {item.label}
-            </button>
-          )
-        })}
-      </div>
-    </nav>
-  )
-}
-
 function MetricCard({ icon: Icon, label, onClick, tone = 'zinc', value }) {
   const tones = {
     amber: 'bg-amber-50 text-amber-700 ring-amber-100',
@@ -3075,23 +2923,6 @@ function SyncErrorBanner({ message }) {
   return (
     <div className="mb-4 rounded-[24px] border border-rose-100 bg-rose-50/80 p-4 text-sm font-medium text-rose-700 shadow-sm">
       {message}
-    </div>
-  )
-}
-
-function SyncStatusPill({ status, text }) {
-  const styles = {
-    error: 'bg-rose-50 text-rose-700 ring-rose-100',
-    local: 'bg-amber-50 text-amber-700 ring-amber-100',
-    synced: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-    syncing: 'bg-sky-50 text-sky-700 ring-sky-100',
-  }
-
-  return (
-    <div
-      className={`shrink-0 rounded-full px-3 py-2 text-xs font-bold shadow-sm ring-1 backdrop-blur-xl sm:px-4 sm:text-sm ${styles[status]}`}
-    >
-      {text}
     </div>
   )
 }
@@ -3672,6 +3503,7 @@ function buildDashboardSummary({ products, stockChecks, stockInRecords }) {
     return {
       id: product.id,
       name: product.name,
+      stockQty: currentStock,
       stockValue: currentStock * costPrice,
       updatedAt: product.updatedAt,
     }
@@ -3772,6 +3604,22 @@ function getProductCurrentStock(product) {
   return Number(product.currentStock ?? product.stockQty) || 0
 }
 
+function getProductDashboardTrend(product, entries) {
+  const latestEntry = entries.find((entry) => entry.productName === product.name)
+  if (!latestEntry) return { direction: 'flat', label: '-' }
+
+  const quantityChange = Number(latestEntry.quantityChange) || 0
+  if (quantityChange === 0) return { direction: 'flat', label: '-' }
+
+  const baseline = Math.max(1, Math.abs(product.stockQty - quantityChange), Math.abs(product.stockQty))
+  const percentage = Math.min(99.9, (Math.abs(quantityChange) / baseline) * 100)
+
+  return {
+    direction: quantityChange > 0 ? 'up' : 'down',
+    label: `${quantityChange > 0 ? '+' : '-'}${percentage.toFixed(1)}%`,
+  }
+}
+
 function isWithinLastDays(value, days) {
   const date = parseTimestamp(value)
   if (!date) return false
@@ -3843,6 +3691,10 @@ function formatRM(value) {
   }).format(Number(value) || 0)
 }
 
+function formatNumber(value) {
+  return new Intl.NumberFormat('en-MY').format(Number(value) || 0)
+}
+
 function formatCompactRM(value) {
   const number = Number(value) || 0
   if (Math.abs(number) >= 1000) {
@@ -3876,202 +3728,6 @@ function formatDate(value) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value))
-}
-
-function getGreeting() {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
-}
-
-function LayersIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="m12 3 9 5-9 5-9-5 9-5Z" />
-      <path d="m3 12 9 5 9-5" />
-      <path d="m3 16 9 5 9-5" />
-    </svg>
-  )
-}
-
-function WalletIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z" />
-      <path d="M4 8h16" />
-      <path d="M16 13h2" />
-    </svg>
-  )
-}
-
-function StarIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
-    </svg>
-  )
-}
-
-function ArrowUpIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" {...props}>
-      <path d="M12 19V5" />
-      <path d="m6 11 6-6 6 6" />
-    </svg>
-  )
-}
-
-function ArrowDownIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" {...props}>
-      <path d="M12 5v14" />
-      <path d="m18 13-6 6-6-6" />
-    </svg>
-  )
-}
-
-function TagIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M20 13 11 4H4v7l9 9 7-7Z" />
-      <path d="M8 8h.01" />
-    </svg>
-  )
-}
-
-function ProfitIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M4 18 10 12l4 4 6-8" />
-      <path d="M15 8h5v5" />
-    </svg>
-  )
-}
-
-function AlertIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M12 3 2.7 19h18.6L12 3Z" />
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
-    </svg>
-  )
-}
-
-function ChartIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M4 19V5" />
-      <path d="M4 19h16" />
-      <path d="M8 16v-5" />
-      <path d="M12 16V8" />
-      <path d="M16 16v-3" />
-    </svg>
-  )
-}
-
-function DashboardIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" />
-    </svg>
-  )
-}
-
-function BoxIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="m21 8-9-5-9 5 9 5 9-5Z" />
-      <path d="M3 8v8l9 5 9-5V8M12 13v8" />
-    </svg>
-  )
-}
-
-function ArrowsIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M7 7h13l-4-4M17 17H4l4 4" />
-    </svg>
-  )
-}
-
-function PlusBoxIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-      <path d="M12 8v8" />
-      <path d="M8 12h8" />
-    </svg>
-  )
-}
-
-function SettingsIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.08A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.08A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 7.03 4.2l.06.06A1.7 1.7 0 0 0 8.96 4.6 1.7 1.7 0 0 0 10 3.08V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1.04 1.52 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 1 1 0 4h-.08A1.7 1.7 0 0 0 19.4 15Z" />
-    </svg>
-  )
-}
-
-function SearchIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="m21 21-4.35-4.35" />
-      <circle cx="11" cy="11" r="7" />
-    </svg>
-  )
-}
-
-function CalendarIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M7 3v4" />
-      <path d="M17 3v4" />
-      <path d="M4 8h16" />
-      <path d="M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
-      <path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01" />
-    </svg>
-  )
-}
-
-function SaveIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M5 5a2 2 0 0 1 2-2h10l2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5Z" />
-      <path d="M8 3v6h8V3" />
-      <path d="M8 17h8" />
-    </svg>
-  )
-}
-
-function CheckIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" {...props}>
-      <path d="m5 13 4 4L19 7" />
-    </svg>
-  )
-}
-
-function CloseIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  )
-}
-
-function TrashIcon(props) {
-  return (
-    <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}>
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v5" />
-      <path d="M14 11v5" />
-    </svg>
-  )
 }
 
 export default App

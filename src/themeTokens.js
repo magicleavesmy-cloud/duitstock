@@ -1,0 +1,40 @@
+export const duitStockDarkGlassTheme = {
+  colors: {
+    background: '#0D1117',
+    card: 'rgba(255,255,255,0.03)',
+    cardStrong: 'rgba(255,255,255,0.06)',
+    cardGradient: 'radial-gradient(circle at top left,rgba(0,182,255,0.18),transparent 35%),radial-gradient(circle at bottom right,rgba(255,138,0,0.14),transparent 35%),linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.04)),rgba(255,255,255,0.03)',
+    border: 'rgba(255,255,255,0.18)',
+    borderStrong: 'rgba(255,255,255,0.24)',
+    textPrimary: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    textMuted: '#64748B',
+    orange: '#FF8A00',
+    orangeDeep: '#FF6B00',
+    oceanBlue: '#00B6FF',
+    oceanBlueBorder: 'rgba(0,182,255,0.22)',
+  },
+  shadows: {
+    card: 'inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(255,255,255,0.04), 0 18px 45px rgba(0,0,0,0.45)',
+    innerHighlight: 'inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(255,255,255,0.04)',
+    orangeGlow: '0 0 20px rgba(255,138,0,0.40)',
+    blueGlow: '0 0 24px rgba(0,182,255,0.28)',
+  },
+  blur: {
+    glass: 'blur(32px) saturate(160%)',
+    glassStrong: 'blur(32px) saturate(160%)',
+  },
+  radius: {
+    card: '18px',
+    panel: '20px',
+    control: '12px',
+    pill: '999px',
+  },
+  spacing: {
+    xs: '4px',
+    sm: '8px',
+    md: '12px',
+    lg: '16px',
+    xl: '24px',
+  },
+}
