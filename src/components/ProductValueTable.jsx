@@ -212,9 +212,9 @@ function getProductCurrentStock(product = {}) {
   const stockValue = [
     product.stockQty,
     product.currentStock,
-    product.quantity,
-    product.qty,
     product.stock,
+    product.qty,
+    product.quantity,
   ].find((value) => value !== undefined && value !== null && value !== '')
 
   return Number(stockValue) || 0

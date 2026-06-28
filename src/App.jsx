@@ -20,7 +20,6 @@ import {
   AlertIcon,
   ArrowsIcon,
   BoxIcon,
-  CalendarIcon,
   ChartIcon,
   CheckIcon,
   CloseIcon,
@@ -1358,7 +1357,7 @@ function MovementsPage({
   const categories = useMemo(() => getCategories(products), [products])
   const [category, setCategory] = useState('all')
   const [query, setQuery] = useState('')
-  const [updatedAtFilter, setUpdatedAtFilter] = useState('all')
+  const [stockCheckSort, setStockCheckSort] = useState('stock-desc')
   const [counts, setCounts] = useState({})
   const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10))
   const [isConfirming, setIsConfirming] = useState(false)
@@ -1443,23 +1442,19 @@ function MovementsPage({
 
     return products
       .map((product, index) => ({ index, product }))
-      .filter((product) => {
-        const matchesCategory = category === 'all' || product.product.category === category
-        const matchesQuery = [product.product.name, product.product.category, product.product.sku]
+      .filter((item) => {
+        const product = item.product
+        const matchesCategory = category === 'all' || product.category === category
+        const matchesQuery = [product.name, product.category, product.sku]
           .join(' ')
           .toLowerCase()
           .includes(lowered)
-        const matchesUpdatedAt = isProductInUpdatedAtFilter(product.product, updatedAtFilter)
 
-        return matchesCategory && matchesQuery && matchesUpdatedAt
+        return matchesCategory && matchesQuery
       })
-      .sort((a, b) => {
-        const checkedDiff =
-          Number(isProductChecked(a.product.id)) - Number(isProductChecked(b.product.id))
-        return checkedDiff || a.index - b.index
-      })
+      .sort((a, b) => sortStockCheckProducts(a, b, stockCheckSort))
       .map((item) => item.product)
-  }, [category, counts, products, query, updatedAtFilter])
+  }, [category, products, query, stockCheckSort])
   const progressProducts = useMemo(() => {
     const lowered = query.toLowerCase().trim()
 
@@ -1529,8 +1524,8 @@ function MovementsPage({
   }
 
   function focusNextInput(productId) {
-    const currentIndex = products.findIndex((product) => product.id === productId)
-    const nextProduct = products[currentIndex + 1]
+    const currentIndex = visibleProducts.findIndex((product) => product.id === productId)
+    const nextProduct = visibleProducts[currentIndex + 1]
     if (!nextProduct) return
 
     window.requestAnimationFrame(() => {
@@ -1676,28 +1671,19 @@ function MovementsPage({
             {category === 'all' ? 'All categories' : category} · {visibleProducts.length}{' '}
             products
           </p>
-          <div className="col-span-2 -mx-1 overflow-x-auto px-1 pb-1">
-            <div className="flex min-w-max gap-1.5">
-              {[
-                ['all', 'All'],
-                ['10days', 'Last 10 Days'],
-                ['20days', 'Last 20 Days'],
-                ['30days', 'Last 30 Days'],
-              ].map(([value, label]) => (
-                <button
-                  className={`stock-age-filter-chip ${
-                    updatedAtFilter === value ? `active filter-${value}` : ''
-                  }`}
-                  key={value}
-                  onClick={() => setUpdatedAtFilter(value)}
-                  type="button"
-                >
-                  <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <label className="col-span-2">
+            <span className="sr-only">Sort stock check products</span>
+            <select
+              className="field-input h-10 px-2 text-xs"
+              onChange={(event) => setStockCheckSort(event.target.value)}
+              value={stockCheckSort}
+            >
+              <option value="stock-desc">Current Stock - Higher</option>
+              <option value="name-asc">A-Z</option>
+              <option value="updated-asc">Last updated ascending</option>
+              <option value="updated-desc">Last updated descending</option>
+            </select>
+          </label>
         </div>
 
         {visibleProducts.length ? (
@@ -4100,16 +4086,6 @@ function getProductUpdatedAtState(value) {
   return 'expired'
 }
 
-function isProductInUpdatedAtFilter(product, activeFilter) {
-  const daysOld = getProductUpdatedDaysOld(product.updatedAt)
-
-  if (activeFilter === 'all') return true
-  if (activeFilter === '10days') return daysOld !== null && daysOld <= 10
-  if (activeFilter === '20days') return daysOld !== null && daysOld > 10 && daysOld <= 20
-  if (activeFilter === '30days') return daysOld !== null && daysOld > 20 && daysOld <= 30
-  return true
-}
-
 function buildDashboardSummary({ products, stockChecks, stockInRecords }) {
   const productsById = new Map(products.map((product) => [product.id, product]))
   const productValues = products.map((product) => {
@@ -4225,12 +4201,47 @@ function getProductCurrentStock(product = {}) {
   const stockValue = [
     product.stockQty,
     product.currentStock,
-    product.quantity,
-    product.qty,
     product.stock,
+    product.qty,
+    product.quantity,
   ].find((value) => value !== undefined && value !== null && value !== '')
 
   return Number(stockValue) || 0
+}
+
+function getProductLastUpdatedTime(product = {}) {
+  const timestamp = [
+    product.updatedAt,
+    product.lastUpdated,
+    product.lastStockCheckAt,
+    product.checkedAt,
+    product.stockUpdatedAt,
+  ]
+    .map(parseTimestamp)
+    .find(Boolean)
+
+  return timestamp ? timestamp.getTime() : null
+}
+
+function sortStockCheckProducts(a, b, sortMode) {
+  if (sortMode === 'name-asc') {
+    return (a.product.name || '').localeCompare(b.product.name || '') || a.index - b.index
+  }
+
+  if (sortMode === 'updated-asc' || sortMode === 'updated-desc') {
+    const aTime = getProductLastUpdatedTime(a.product)
+    const bTime = getProductLastUpdatedTime(b.product)
+
+    if (aTime === null && bTime === null) return a.index - b.index
+    if (aTime === null) return 1
+    if (bTime === null) return -1
+
+    return sortMode === 'updated-asc'
+      ? aTime - bTime || a.index - b.index
+      : bTime - aTime || a.index - b.index
+  }
+
+  return getProductCurrentStock(b.product) - getProductCurrentStock(a.product) || a.index - b.index
 }
 
 function getProductDashboardTrend(product, entries) {
