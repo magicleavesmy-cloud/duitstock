@@ -3,7 +3,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  increment,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -307,6 +306,7 @@ function App() {
           batch.set(
             doc(db, 'products', record.productId),
             {
+              currentStock: record.countedStock,
               stockQty: record.countedStock,
               updatedAt: productUpdatedAt,
             },
@@ -319,7 +319,7 @@ function App() {
           current.map((product) => {
             const record = records.find((item) => item.productId === product.id)
             return record
-              ? { ...product, stockQty: record.countedStock, updatedAt: productUpdatedAt }
+              ? withProductStock(product, record.countedStock, productUpdatedAt)
               : product
           }),
         )
@@ -336,7 +336,7 @@ function App() {
       current.map((product) => {
         const record = records.find((item) => item.productId === product.id)
         return record
-          ? { ...product, stockQty: record.countedStock, updatedAt: productUpdatedAt }
+          ? withProductStock(product, record.countedStock, productUpdatedAt)
           : product
       }),
     )
@@ -387,6 +387,7 @@ function App() {
         batch.set(
           doc(db, 'products', record.productId),
           {
+            currentStock: record.countedStock,
             stockQty: record.countedStock,
             updatedAt: productUpdatedAt,
           },
@@ -402,7 +403,7 @@ function App() {
     setProducts((current) =>
       current.map((product) =>
         product.id === record.productId
-          ? { ...product, stockQty: record.countedStock, updatedAt: productUpdatedAt }
+          ? withProductStock(product, record.countedStock, productUpdatedAt)
           : product,
       ),
     )
@@ -507,22 +508,35 @@ function App() {
     if (isCloudEnabled) {
       try {
         const batch = writeBatch(db)
+        const stockDeltasByProduct = getStockDeltasByProduct(records)
 
         records.forEach((record) => {
           batch.set(doc(db, 'stockInRecords', record.id), {
             ...record,
             createdAt: serverTimestamp(),
           })
+        })
+
+        stockDeltasByProduct.forEach((stockDelta, productId) => {
+          const product = products.find((item) => item.id === productId)
+          const nextStockQty = getProductCurrentStock(product) + stockDelta
+
           batch.set(
-            doc(db, 'products', record.productId),
+            doc(db, 'products', productId),
             {
-              stockQty: increment(record.quantityAdded),
+              currentStock: nextStockQty,
+              stockQty: nextStockQty,
               updatedAt: productUpdatedAt,
             },
             { merge: true },
           )
         })
         await batch.commit()
+        setProducts((current) => applyProductStockDeltas(current, records, productUpdatedAt))
+        setStockInRecords((current) => [
+          ...records.map((record) => ({ ...record, createdAt: productUpdatedAt })),
+          ...current,
+        ])
         setStockInProduct(null)
         showToast('success', records.length > 1 ? 'Stock items added.' : 'Stock added.')
         return true
@@ -538,13 +552,7 @@ function App() {
           .filter((record) => record.productId === product.id)
           .reduce((total, record) => total + record.quantityAdded, 0)
 
-        return addedQty
-          ? {
-              ...product,
-              stockQty: Number(product.stockQty || 0) + addedQty,
-              updatedAt: productUpdatedAt,
-            }
-          : product
+        return addedQty ? withProductStock(product, getProductCurrentStock(product) + addedQty, productUpdatedAt) : product
       }),
     )
     setStockInRecords((current) => [
@@ -575,12 +583,14 @@ function App() {
     if (isCloudEnabled) {
       try {
         const batch = writeBatch(db)
+        const nextStockQty = getProductCurrentStock(product) - quantityAdded
 
         batch.delete(doc(db, 'stockInRecords', record.id))
         batch.set(
           doc(db, 'products', record.productId),
           {
-            stockQty: increment(-quantityAdded),
+            currentStock: nextStockQty,
+            stockQty: nextStockQty,
             updatedAt: serverTimestamp(),
           },
           { merge: true },
@@ -596,7 +606,7 @@ function App() {
     setProducts((current) =>
       current.map((item) =>
         item.id === record.productId
-          ? { ...item, stockQty: (Number(item.stockQty) || 0) - quantityAdded }
+          ? withProductStock(item, getProductCurrentStock(item) - quantityAdded)
           : item,
       ),
     )
@@ -636,6 +646,7 @@ function App() {
     if (isCloudEnabled) {
       try {
         const batch = writeBatch(db)
+        const nextStockQty = getProductCurrentStock(product) + quantityDelta
 
         batch.set(
           doc(db, 'stockInRecords', record.id),
@@ -653,7 +664,8 @@ function App() {
         batch.set(
           doc(db, 'products', record.productId),
           {
-            stockQty: increment(quantityDelta),
+            currentStock: nextStockQty,
+            stockQty: nextStockQty,
             updatedAt: serverTimestamp(),
           },
           { merge: true },
@@ -684,7 +696,7 @@ function App() {
     setProducts((current) =>
       current.map((item) =>
         item.id === record.productId
-          ? { ...item, stockQty: (Number(item.stockQty) || 0) + quantityDelta }
+          ? withProductStock(item, getProductCurrentStock(item) + quantityDelta, updatedAt)
           : item,
       ),
     )
@@ -1121,7 +1133,7 @@ function ProductsPage({
 
     return products
       .filter((item) => {
-        const stock = Number(item.stockQty) || 0
+        const stock = getProductCurrentStock(item)
         const minimumStock = Number(item.minimumStock) || 0
         const matchesQuery = [item.name, item.category, item.supplier, item.sku]
           .join(' ')
@@ -1133,7 +1145,7 @@ function ProductsPage({
       })
       .sort((a, b) => {
         if (!showLowStockOnly) return a.name.localeCompare(b.name)
-        return (Number(a.stockQty) || 0) - (Number(b.stockQty) || 0)
+        return getProductCurrentStock(a) - getProductCurrentStock(b)
       })
   }, [category, products, query, showLowStockOnly])
   const productSummary = useMemo(() => buildProductSummary(filteredProducts), [filteredProducts])
@@ -1262,7 +1274,7 @@ function ProductCard({
 }) {
   const costPrice = Number(product.costPrice) || 0
   const sellingPrice = Number(product.sellingPrice) || 0
-  const stock = Number(product.stockQty) || 0
+  const stock = getProductCurrentStock(product)
   const profitPerUnit = sellingPrice - costPrice
   const profitMargin = sellingPrice > 0 ? (profitPerUnit / sellingPrice) * 100 : 0
   const totalProfitIfSoldOut = profitPerUnit * stock
@@ -1297,7 +1309,7 @@ function ProductCard({
         </div>
         <div className="flex shrink-0 flex-row items-center gap-2">
           <span className="stock-badge shrink-0" style={productStockBadgeStyle}>
-            Stock {Number(product.stockQty) || 0}
+            Stock {stock}
           </span>
           <div className="flex flex-wrap justify-end gap-1">
             <button
@@ -1499,7 +1511,7 @@ function MovementsPage({
         displayQty: '',
         recordId: '',
         storeQty: '',
-        systemQty: Number(products.find((product) => product.id === productId)?.stockQty) || 0,
+        systemQty: getProductCurrentStock(products.find((product) => product.id === productId)),
         ...(current[productId] || {}),
         [field]: value,
         isSaved: false,
@@ -1814,8 +1826,8 @@ function StockCheckRow({
   const hasEntry = displayQty !== '' || storeQty !== ''
   const isSaved = Boolean(count.isSaved)
   const isCheckedIndicatorActive = isSaved || isSaving
-  const systemQty = Number(count.systemQty ?? product.stockQty) || 0
-  const currentStockLabel = isSaved ? Number(product.stockQty) || 0 : systemQty
+  const systemQty = Number(count.systemQty ?? getProductCurrentStock(product)) || 0
+  const currentStockLabel = isSaved ? getProductCurrentStock(product) : systemQty
   const physicalQty = (Number(displayQty) || 0) + (Number(storeQty) || 0)
   const difference = physicalQty - systemQty
   const lastUpdatedLabel = formatProductUpdatedAt(stockCheckUpdatedAt)
@@ -2028,7 +2040,7 @@ function ReportsPage({ products, stockChecks }) {
         deadStockItems,
         products.reduce(
           (total, product) =>
-            total + (Number(product.stockQty) || 0) * (Number(product.costPrice) || 0),
+            total + getProductCurrentStock(product) * (Number(product.costPrice) || 0),
           0,
         ),
       ),
@@ -2735,7 +2747,7 @@ function StockInEntryBox({ date, products, onSave }) {
         quantityAdded: '',
         rowId,
         sku: product.sku,
-        stockQty: Number(product.stockQty) || 0,
+        stockQty: getProductCurrentStock(product),
       },
     ])
     setSearch('')
@@ -2910,7 +2922,7 @@ function StockInEntryBox({ date, products, onSave }) {
                           </span>
                         </span>
                         <span className="shrink-0 text-[13px] text-zinc-500">
-                          {Number(product.stockQty) || 0}
+                          {getProductCurrentStock(product)}
                         </span>
                       </button>
                     ))}
@@ -3484,7 +3496,7 @@ function Toast({ onClose, toast }) {
 function useDuitStockSync() {
   const hasCloudConfig = isFirebaseConfigured && db
   const [products, setProducts] = useState(() =>
-    hasCloudConfig ? [] : readStorage(PRODUCTS_KEY, []),
+    hasCloudConfig ? [] : readStorage(PRODUCTS_KEY, []).map(normalizeSyncedProduct),
   )
   const [stockChecks, setStockChecks] = useState(() =>
     hasCloudConfig ? [] : readStorage(STOCK_CHECKS_KEY, []),
@@ -3541,13 +3553,15 @@ function useDuitStockSync() {
           }))
           .sort((a, b) => a.name.localeCompare(b.name))
 
-        setProducts(nextProducts)
-        writeStorage(PRODUCTS_KEY, nextProducts)
+        const normalizedProducts = nextProducts.map(normalizeSyncedProduct)
+
+        setProducts(normalizedProducts)
+        writeStorage(PRODUCTS_KEY, normalizedProducts)
         setLoaded((current) => ({ ...current, products: true }))
         setSyncErrors((current) => ({ ...current, products: '' }))
       },
       () => {
-        setProducts(readStorage(PRODUCTS_KEY, []))
+        setProducts(readStorage(PRODUCTS_KEY, []).map(normalizeSyncedProduct))
         setLoaded((current) => ({ ...current, products: true }))
         setSyncErrors((current) => ({
           ...current,
@@ -3726,7 +3740,7 @@ function getStockCheckUsers(stockChecks) {
 function buildStockCheckRow(product, count = {}) {
   const displayQty = Number(count.displayQty) || 0
   const storeQty = Number(count.storeQty) || 0
-  const systemQty = Number(count.systemQty ?? product.stockQty) || 0
+  const systemQty = Number(count.systemQty ?? getProductCurrentStock(product)) || 0
   const physicalQty = displayQty + storeQty
 
   return {
@@ -3793,7 +3807,7 @@ function buildStockCheckSessionProduct(product, count = {}) {
   return {
     category: product.category || '',
     displayQty,
-    newStock: Number(product.stockQty) || 0,
+    newStock: getProductCurrentStock(product),
     oldStock: Number(count.systemQty) || 0,
     productId: product.id,
     productName: product.name,
@@ -3864,7 +3878,7 @@ function buildDeadStockReport(products, stockChecks, deadStockDays) {
 
   return products
     .map((product) => {
-      const currentStock = Number(product.stockQty) || 0
+      const currentStock = getProductCurrentStock(product)
       const costPrice = Number(product.costPrice) || 0
       const sellingPrice = Number(product.sellingPrice) || 0
       const lastSoldDate = lastSoldByProduct.get(product.id)
@@ -3963,7 +3977,7 @@ function buildProductSummary(products) {
     (summary, product) => {
       const cost = Number(product.costPrice) || 0
       const selling = Number(product.sellingPrice) || 0
-      const stock = Number(product.stockQty) || 0
+      const stock = getProductCurrentStock(product)
 
       summary.totalCostValue += cost * stock
       summary.totalSaleValue += selling * stock
@@ -3987,17 +4001,55 @@ function getDateOffset(date, offsetDays) {
 }
 
 function normalizeProduct(product) {
+  const stockQty = getProductCurrentStock(product)
+
   return {
     ...product,
     name: (product.name || '').trim(),
     category: (product.category || '').trim(),
     costPrice: Number(product.costPrice) || 0,
     sellingPrice: Number(product.sellingPrice) || 0,
-    stockQty: Number(product.stockQty) || 0,
+    currentStock: stockQty,
+    stockQty,
     minimumStock: Number(product.minimumStock) || 0,
     supplier: (product.supplier || '').trim(),
     sku: (product.sku || '').trim(),
   }
+}
+
+function normalizeSyncedProduct(product) {
+  return normalizeProduct(product)
+}
+
+function withProductStock(product, stockQty, updatedAt) {
+  const nextStockQty = Number(stockQty) || 0
+
+  return {
+    ...product,
+    currentStock: nextStockQty,
+    stockQty: nextStockQty,
+    ...(updatedAt ? { updatedAt } : {}),
+  }
+}
+
+function applyProductStockDeltas(products, records, updatedAt) {
+  return products.map((product) => {
+    const addedQty = records
+      .filter((record) => record.productId === product.id)
+      .reduce((total, record) => total + (Number(record.quantityAdded) || 0), 0)
+
+    return addedQty ? withProductStock(product, getProductCurrentStock(product) + addedQty, updatedAt) : product
+  })
+}
+
+function getStockDeltasByProduct(records) {
+  return records.reduce((deltas, record) => {
+    deltas.set(
+      record.productId,
+      (deltas.get(record.productId) || 0) + (Number(record.quantityAdded) || 0),
+    )
+    return deltas
+  }, new Map())
 }
 
 function getCategories(products) {
@@ -4066,6 +4118,7 @@ function buildDashboardSummary({ products, stockChecks, stockInRecords }) {
 
     return {
       id: product.id,
+      costPrice,
       name: product.name,
       stockQty: currentStock,
       stockValue: currentStock * costPrice,
@@ -4168,8 +4221,16 @@ function getStockValueEntries({ productsById, stockChecks, stockInRecords }) {
   )
 }
 
-function getProductCurrentStock(product) {
-  return Number(product.currentStock ?? product.stockQty) || 0
+function getProductCurrentStock(product = {}) {
+  const stockValue = [
+    product.stockQty,
+    product.currentStock,
+    product.quantity,
+    product.qty,
+    product.stock,
+  ].find((value) => value !== undefined && value !== null && value !== '')
+
+  return Number(stockValue) || 0
 }
 
 function getProductDashboardTrend(product, entries) {
@@ -4179,7 +4240,8 @@ function getProductDashboardTrend(product, entries) {
   const quantityChange = Number(latestEntry.quantityChange) || 0
   if (quantityChange === 0) return { direction: 'flat', label: '-' }
 
-  const baseline = Math.max(1, Math.abs(product.stockQty - quantityChange), Math.abs(product.stockQty))
+  const currentStock = getProductCurrentStock(product)
+  const baseline = Math.max(1, Math.abs(currentStock - quantityChange), Math.abs(currentStock))
   const percentage = Math.min(99.9, (Math.abs(quantityChange) / baseline) * 100)
 
   return {

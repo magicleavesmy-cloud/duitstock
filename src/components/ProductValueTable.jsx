@@ -79,6 +79,9 @@ export default function ProductValueTable({
               {products.map((product, index) => {
                 const change =
                   recentChangeByProduct.get(product.id) ?? recentChangeByProduct.get(product.name) ?? 0
+                const stockQty = getProductCurrentStock(product)
+                const unitCost = Number(product.costPrice ?? product.price) || 0
+                const stockValue = stockQty * unitCost
 
                 return (
                   <tr key={product.id} style={{ height: 46, verticalAlign: 'middle' }}>
@@ -94,10 +97,10 @@ export default function ProductValueTable({
                       <ProductChange value={change} />
                     </td>
                     <td style={qtyCellStyle}>
-                      {formatNumber(product.stockQty)}
+                      {formatNumber(stockQty)}
                     </td>
                     <td style={valueCellStyle}>
-                      {formatRM(product.stockValue)}
+                      {formatRM(stockValue)}
                     </td>
                   </tr>
                 )
@@ -203,6 +206,18 @@ function getRecentStockInChanges(entries) {
   })
 
   return changes
+}
+
+function getProductCurrentStock(product = {}) {
+  const stockValue = [
+    product.stockQty,
+    product.currentStock,
+    product.quantity,
+    product.qty,
+    product.stock,
+  ].find((value) => value !== undefined && value !== null && value !== '')
+
+  return Number(stockValue) || 0
 }
 
 const trendCellStyle = {
