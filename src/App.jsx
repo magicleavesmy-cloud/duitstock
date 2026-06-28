@@ -416,6 +416,52 @@ function App() {
     return record
   }
 
+  async function confirmStockCheckSession(session) {
+    if (!isAdmin && !isStaff) {
+      showError('Only logged-in users can confirm stock checks.')
+      return false
+    }
+
+    if (!session?.products?.length) {
+      showError('Save at least one product before confirming stock check.')
+      return false
+    }
+
+    setActionError('')
+
+    const timestamp = new Date().toISOString()
+    const record = {
+      id: createId(),
+      date: session.date || timestamp.slice(0, 10),
+      productList: session.products,
+      products: session.products,
+      timestamp,
+      totalCountedQty: session.totalCountedQty,
+      totalDisplayQty: session.totalDisplayQty,
+      totalProductsChecked: session.totalProductsChecked,
+      totalStoreQty: session.totalStoreQty,
+      type: 'stock-check-session',
+      userName: currentUserRole,
+      userRole: currentUserRole,
+    }
+
+    if (isCloudEnabled) {
+      try {
+        await setDoc(doc(db, 'stockChecks', record.id), {
+          ...record,
+          createdAt: serverTimestamp(),
+        })
+      } catch {
+        showError('Stock check confirmation could not be saved to Firestore.')
+        return false
+      }
+    }
+
+    setStockChecks((current) => [record, ...current])
+    showToast('success', 'Stock check confirmed successfully')
+    return record
+  }
+
   async function saveStockIn(stockIn) {
     const stockInItems = stockIn.items || [stockIn]
     const invalidItem = stockInItems.find((item) => Number(item.quantityAdded) <= 0)
@@ -833,6 +879,7 @@ function App() {
                   canViewProfit={isAdmin}
                   products={products}
                   stockChecks={stockChecks}
+                  onConfirmSession={confirmStockCheckSession}
                   onSaveProduct={saveStockCheckRecord}
                   onSave={saveStockCheck}
                 />
@@ -1288,22 +1335,49 @@ function ProductCard({
   )
 }
 
-function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSaveProduct }) {
+function MovementsPage({
+  canViewProfit,
+  products,
+  stockChecks,
+  onConfirmSession,
+  onSave,
+  onSaveProduct,
+}) {
   const categories = useMemo(() => getCategories(products), [products])
   const [category, setCategory] = useState('all')
   const [query, setQuery] = useState('')
   const [updatedAtFilter, setUpdatedAtFilter] = useState('all')
   const [counts, setCounts] = useState({})
   const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0, 10))
+  const [isConfirming, setIsConfirming] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [savingProductId, setSavingProductId] = useState('')
   const [pendingRows, setPendingRows] = useState(null)
   const today = new Date().toISOString().slice(0, 10)
+  const productStockCheckRecords = useMemo(
+    () => stockChecks.filter((item) => !isStockCheckSession(item)),
+    [stockChecks],
+  )
+  const stockCheckSessions = useMemo(
+    () => stockChecks.filter((item) => isStockCheckSession(item)),
+    [stockChecks],
+  )
+  const latestTodaySessionTimestamp = useMemo(
+    () =>
+      stockCheckSessions
+        .filter((item) => item.date === today)
+        .reduce(
+          (latest, item) => Math.max(latest, getStockEntryTimestamp(item).getTime()),
+          0,
+        ),
+    [stockCheckSessions, today],
+  )
   const savedCounts = useMemo(() => {
     const byProduct = new Map()
 
-    stockChecks
+    productStockCheckRecords
       .filter((item) => item.date === today && item.productId)
+      .filter((item) => sortMovementDate(item) > latestTodaySessionTimestamp)
       .forEach((item) => {
         const current = byProduct.get(item.productId)
         if (current && sortMovementDate(current) >= sortMovementDate(item)) return
@@ -1311,11 +1385,11 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
       })
 
     return byProduct
-  }, [stockChecks, today])
+  }, [latestTodaySessionTimestamp, productStockCheckRecords, today])
   const latestStockCheckByProduct = useMemo(() => {
     const byProduct = new Map()
 
-    stockChecks
+    productStockCheckRecords
       .filter((item) => item.productId)
       .forEach((item) => {
         const timestamp = getStockEntryTimestamp(item)
@@ -1326,7 +1400,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
       })
 
     return byProduct
-  }, [stockChecks])
+  }, [productStockCheckRecords])
 
   useEffect(() => {
     setCounts((current) => {
@@ -1390,10 +1464,13 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
   const progressCheckedCount = progressProducts.filter(
     (product) => isProductChecked(product.id),
   ).length
+  const checkedProducts = products.filter((product) => isProductChecked(product.id))
+  const canConfirmStockCheck = checkedProducts.length > 0 && !isConfirming
   const progressPercent = progressProducts.length
     ? Math.round((progressCheckedCount / progressProducts.length) * 100)
     : 0
-  const filteredStockChecks = stockChecks.filter((item) => item.date === filterDate)
+  const filteredStockChecks = productStockCheckRecords.filter((item) => item.date === filterDate)
+  const filteredSessions = stockCheckSessions.filter((item) => item.date === filterDate)
   const historyGroups = groupStockChecksByDate(filteredStockChecks)
   const dailyTotals = filteredStockChecks.reduce(
     (totals, item) => {
@@ -1508,6 +1585,28 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
     }))
   }
 
+  async function confirmStockCheck() {
+    const sessionProducts = checkedProducts.map((product) =>
+      buildStockCheckSessionProduct(product, counts[product.id] || {}),
+    )
+    const totals = buildStockCheckSessionTotals(sessionProducts)
+
+    if (!sessionProducts.length) return
+
+    setIsConfirming(true)
+    const didConfirm = await onConfirmSession({
+      date: today,
+      products: sessionProducts,
+      ...totals,
+    })
+    setIsConfirming(false)
+
+    if (!didConfirm) return
+
+    setCounts({})
+    setPendingRows(null)
+  }
+
   return (
     <section className="space-y-5">
       <form className="premium-panel pb-[72px] sm:pb-3" onSubmit={handleSubmit}>
@@ -1590,20 +1689,36 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
         </div>
 
         {visibleProducts.length ? (
-          <div className="max-h-[72vh] divide-y divide-zinc-100 overflow-y-auto rounded-[16px] bg-white/70 pb-20 pr-0 sm:max-h-none sm:overflow-visible sm:pb-16">
-            {visibleProducts.map((product) => (
-              <StockCheckRow
-                count={counts[product.id] || { displayQty: '', storeQty: '' }}
-                isSaving={savingProductId === product.id}
-                key={product.id}
-                onChange={updateCount}
-                onEnter={focusNextInput}
-                onSave={saveProductCount}
-                product={product}
-                stockCheckUpdatedAt={latestStockCheckByProduct.get(product.id)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="max-h-[72vh] divide-y divide-zinc-100 overflow-y-auto rounded-[16px] bg-white/70 pb-4 pr-0 sm:max-h-none sm:overflow-visible">
+              {visibleProducts.map((product) => (
+                <StockCheckRow
+                  count={counts[product.id] || { displayQty: '', storeQty: '' }}
+                  isSaving={savingProductId === product.id}
+                  key={product.id}
+                  onChange={updateCount}
+                  onEnter={focusNextInput}
+                  onSave={saveProductCount}
+                  product={product}
+                  stockCheckUpdatedAt={latestStockCheckByProduct.get(product.id)}
+                />
+              ))}
+            </div>
+            <div className="sticky bottom-24 z-30 mt-2 rounded-[18px] bg-white/95 p-2 shadow-xl shadow-zinc-950/10 ring-1 ring-zinc-200 backdrop-blur sm:bottom-4 sm:mx-auto sm:max-w-sm">
+              <button
+                className="primary-button h-12 w-full text-sm disabled:cursor-not-allowed disabled:opacity-55"
+                disabled={!canConfirmStockCheck}
+                onClick={confirmStockCheck}
+                type="button"
+              >
+                <SaveIcon className="mr-2 h-4 w-4" />
+                {isConfirming ? 'Confirming...' : 'Confirm Stock Check'}
+              </button>
+              <p className="mt-1 text-center text-[10px] font-bold text-zinc-500">
+                {checkedProducts.length} saved product{checkedProducts.length === 1 ? '' : 's'}
+              </p>
+            </div>
+          </>
         ) : (
           <EmptyState
             title="No products to check"
@@ -1648,6 +1763,13 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
             </>
           )}
         </div>
+        {filteredSessions.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {filteredSessions.map((session) => (
+              <StockCheckSessionCard key={session.id} session={session} />
+            ))}
+          </div>
+        )}
         {historyGroups.length ? (
           <div className="mt-3 space-y-3">
             {historyGroups.map((group) => (
@@ -1658,7 +1780,7 @@ function MovementsPage({ canViewProfit, products, stockChecks, onSave, onSavePro
               />
             ))}
           </div>
-        ) : (
+        ) : filteredSessions.length ? null : (
           <EmptyState
             title="No stock checks yet"
             text="Saved stock check records for the selected date will appear here."
@@ -1693,6 +1815,7 @@ function StockCheckRow({
   const isSaved = Boolean(count.isSaved)
   const isCheckedIndicatorActive = isSaved || isSaving
   const systemQty = Number(count.systemQty ?? product.stockQty) || 0
+  const currentStockLabel = isSaved ? Number(product.stockQty) || 0 : systemQty
   const physicalQty = (Number(displayQty) || 0) + (Number(storeQty) || 0)
   const difference = physicalQty - systemQty
   const lastUpdatedLabel = formatProductUpdatedAt(stockCheckUpdatedAt)
@@ -1726,7 +1849,7 @@ function StockCheckRow({
                 textShadow: 'none',
               }}
             >
-              {systemQty}
+              {currentStockLabel}
             </span>
           </p>
           <p className={`product-updated ${updatedAtState}`}>
@@ -1834,6 +1957,56 @@ function StockCheckHistoryDay({ canViewProfit, group }) {
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+function StockCheckSessionCard({ session }) {
+  const products = session.products || session.productList || []
+  const confirmedAt = parseTimestamp(session.timestamp) || getStockEntryTimestamp(session)
+  const userName = session.userName || session.userRole || session.checkedBy || 'Unknown'
+
+  return (
+    <section className="rounded-[16px] bg-[#FFFBF4] p-2.5 ring-1 ring-[#ECE7DF]">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-zinc-950">Confirmed stock check</h3>
+          <p className="mt-0.5 text-[11px] font-semibold text-zinc-500">
+            {formatTime(confirmedAt)} / {capitalize(userName)}
+          </p>
+        </div>
+        <span className="w-fit rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-zinc-700 ring-1 ring-zinc-200">
+          {session.totalProductsChecked || products.length} checked
+        </span>
+      </div>
+
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        <Info label="Display" value={session.totalDisplayQty || 0} />
+        <Info label="Store" value={session.totalStoreQty || 0} />
+        <Info label="Counted" value={session.totalCountedQty || 0} />
+      </div>
+
+      {products.length > 0 && (
+        <div className="mt-2 divide-y divide-zinc-200/70">
+          {products.map((product) => (
+            <div
+              className="grid grid-cols-[1fr_auto] items-center gap-2 py-1.5 text-[12px]"
+              key={`${session.id}-${product.productId}`}
+            >
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-zinc-900">{product.productName}</p>
+                <p className="truncate text-[10px] font-semibold text-zinc-500">
+                  {product.category || 'Uncategorised'} / Display {product.displayQty} / Store{' '}
+                  {product.storeQty}
+                </p>
+              </div>
+              <p className="shrink-0 font-medium text-zinc-500">
+                {product.oldStock} {'->'} {product.newStock}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
@@ -3502,7 +3675,7 @@ function getSyncStatusText(status) {
 
 function sortMovementDate(movement) {
   if (movement.createdAt?.toMillis) return movement.createdAt.toMillis()
-  return new Date(movement.date || 0).getTime()
+  return new Date(movement.timestamp || movement.updatedAt || movement.checkedAt || movement.date || 0).getTime()
 }
 
 function getRecordDateValue(record) {
@@ -3612,24 +3785,64 @@ function buildStockCheckRecord({ checkedAt, currentUserRole, id, row }) {
   }
 }
 
+function isStockCheckSession(item) {
+  return item?.type === 'stock-check-session'
+}
+
+function buildStockCheckSessionProduct(product, count = {}) {
+  const displayQty = Number(count.displayQty) || 0
+  const storeQty = Number(count.storeQty) || 0
+  const totalQty = displayQty + storeQty
+
+  return {
+    category: product.category || '',
+    displayQty,
+    newStock: Number(product.stockQty) || 0,
+    oldStock: Number(count.systemQty) || 0,
+    productId: product.id,
+    productName: product.name,
+    storeQty,
+    totalQty,
+  }
+}
+
+function buildStockCheckSessionTotals(products) {
+  return products.reduce(
+    (totals, product) => {
+      totals.totalCountedQty += Number(product.totalQty) || 0
+      totals.totalDisplayQty += Number(product.displayQty) || 0
+      totals.totalProductsChecked += 1
+      totals.totalStoreQty += Number(product.storeQty) || 0
+      return totals
+    },
+    {
+      totalCountedQty: 0,
+      totalDisplayQty: 0,
+      totalProductsChecked: 0,
+      totalStoreQty: 0,
+    },
+  )
+}
+
 function buildReport(stockChecks, startDate, endDate) {
+  const productStockChecks = stockChecks.filter((item) => !isStockCheckSession(item))
   const today = new Date().toISOString().slice(0, 10)
   const weekStart = getDateOffset(today, -6)
   const monthStart = today.slice(0, 8) + '01'
-  const inRangeChecks = stockChecks.filter((item) =>
+  const inRangeChecks = productStockChecks.filter((item) =>
     isDateBetween(item.date, startDate, endDate),
   )
 
   return {
     month: sumChecks(
-      stockChecks.filter((item) => isDateBetween(item.date, monthStart, today)),
+      productStockChecks.filter((item) => isDateBetween(item.date, monthStart, today)),
     ),
     range: sumChecks(inRangeChecks),
-    today: sumChecks(stockChecks.filter((item) => item.date === today)),
+    today: sumChecks(productStockChecks.filter((item) => item.date === today)),
     topProfitable: rankProducts(inRangeChecks, 'profit'),
     topSelling: rankProducts(inRangeChecks, 'soldQty'),
     week: sumChecks(
-      stockChecks.filter((item) => isDateBetween(item.date, weekStart, today)),
+      productStockChecks.filter((item) => isDateBetween(item.date, weekStart, today)),
     ),
   }
 }
@@ -3638,7 +3851,7 @@ function buildDeadStockReport(products, stockChecks, deadStockDays) {
   const today = new Date()
   const lastSoldByProduct = new Map()
 
-  stockChecks.forEach((item) => {
+  stockChecks.filter((item) => !isStockCheckSession(item)).forEach((item) => {
     const soldQty =
       Number(item.soldQty) ||
       Math.max(0, (Number(item.previousStock) || 0) - (Number(item.countedStock) || 0))
@@ -3930,27 +4143,29 @@ function getStockValueEntries({ productsById, stockChecks, stockInRecords }) {
       value: Math.abs(quantityChange) * costPrice,
     }
   })
-  const stockCheckEntries = stockChecks.map((record) => {
-    const product = productsById.get(record.productId)
-    const previousStock = Number(record.systemQty ?? record.previousStock) || 0
-    const countedStock = Number(record.countedStock ?? record.physicalQty) || 0
-    const quantityChange = countedStock - previousStock
-    const costPrice = Number(record.costPrice ?? product?.costPrice) || 0
-    const timestamp = getStockEntryTimestamp(record)
+  const stockCheckEntries = stockChecks
+    .filter((record) => !isStockCheckSession(record))
+    .map((record) => {
+      const product = productsById.get(record.productId)
+      const previousStock = Number(record.systemQty ?? record.previousStock) || 0
+      const countedStock = Number(record.countedStock ?? record.physicalQty) || 0
+      const quantityChange = countedStock - previousStock
+      const costPrice = Number(record.costPrice ?? product?.costPrice) || 0
+      const timestamp = getStockEntryTimestamp(record)
 
-    return {
-      action: quantityChange > 0 ? 'Stock In' : 'Stock Out',
-      currentStock: countedStock,
-      id: `stock-check-${record.id}`,
-      productId: record.productId,
-      productName: record.productName || product?.name || 'Unknown product',
-      quantityChange,
-      timestamp,
-      updatedLabel: formatDashboardEntryUpdatedAt(timestamp),
-      updatedState: getDashboardEntryUpdatedState(timestamp),
-      value: Math.abs(quantityChange) * costPrice,
-    }
-  })
+      return {
+        action: quantityChange > 0 ? 'Stock In' : 'Stock Out',
+        currentStock: countedStock,
+        id: `stock-check-${record.id}`,
+        productId: record.productId,
+        productName: record.productName || product?.name || 'Unknown product',
+        quantityChange,
+        timestamp,
+        updatedLabel: formatDashboardEntryUpdatedAt(timestamp),
+        updatedState: getDashboardEntryUpdatedState(timestamp),
+        value: Math.abs(quantityChange) * costPrice,
+      }
+    })
 
   return [...stockInEntries, ...stockCheckEntries].filter(
     (entry) => entry.quantityChange !== 0 && entry.timestamp.getTime() > 0,
@@ -3992,6 +4207,7 @@ function isCurrentMonth(value) {
 
 function getStockEntryTimestamp(record) {
   return (
+    parseTimestamp(record.timestamp) ||
     parseTimestamp(record.updatedAt) ||
     parseTimestamp(record.createdAt) ||
     parseTimestamp(record.checkedAt) ||
@@ -4050,6 +4266,25 @@ function formatRM(value) {
 
 function formatNumber(value) {
   return new Intl.NumberFormat('en-MY').format(Number(value) || 0)
+}
+
+function formatTime(value) {
+  const date = parseTimestamp(value)
+  if (!date) return '-'
+
+  return new Intl.DateTimeFormat('en-MY', {
+    hour: 'numeric',
+    hour12: true,
+    minute: '2-digit',
+  })
+    .format(date)
+    .replace(/\b(am|pm)\b/i, (period) => period.toUpperCase())
+}
+
+function capitalize(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 function formatCompactRM(value) {
