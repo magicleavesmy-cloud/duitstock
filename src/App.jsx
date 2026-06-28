@@ -1894,11 +1894,7 @@ function StockCheckRow({
 
       <div className="flex w-[68px] shrink-0 flex-col items-center">
         <button
-          className={`h-8 w-[62px] rounded-xl text-[10px] font-bold transition ${
-            isSaved
-              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
-              : 'bg-[#f5f1e8] text-[var(--text-main)] shadow-sm'
-          }`}
+          className={`stock-check-save-button ${isSaved ? 'is-saved' : ''}`}
           disabled={!hasEntry || isSaved || isSaving}
           onClick={() => onSave(product)}
           type="button"
