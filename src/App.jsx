@@ -2719,7 +2719,7 @@ function StockInEntryBox({ date, products, onSave }) {
   )
   const totalAmount = rowTotal
   const tableGridClass =
-    'grid-cols-[minmax(130px,3fr)_52px_54px_60px_68px_30px] sm:grid-cols-[minmax(220px,3fr)_84px_84px_100px_108px_40px]'
+    'grid-cols-[minmax(130px,3fr)_52px_54px_60px_68px_36px] sm:grid-cols-[minmax(220px,3fr)_84px_84px_100px_108px_44px]'
 
   useEffect(() => {
     if (!pendingQtyFocusId) return
@@ -2887,7 +2887,7 @@ function StockInEntryBox({ date, products, onSave }) {
                     aria-label={`Remove ${row.productName} from stock in`}
                     className="grid h-8 w-6 place-items-center rounded-lg bg-rose-50 text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-200 sm:w-8"
                     onClick={() => removeRow(row.rowId)}
-                    style={{ flexShrink: 0, marginLeft: 6 }}
+                    style={{ flexShrink: 0, marginLeft: 0 }}
                     type="button"
                   >
                     <TrashIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
