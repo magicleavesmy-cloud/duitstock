@@ -5,9 +5,9 @@ html {
 }
 
 :root {
-  --ds-bg: #FAFAF8;
+  --ds-bg: #FFFFFF;
   --ds-card: #FFFFFF;
-  --ds-inner: #F6F3EE;
+  --ds-inner: #F5F5F5;
   --ds-accent: #C88B4A;
   --ds-accent-soft: rgba(200, 139, 74, 0.12);
   --ds-text: #18181B;
@@ -675,11 +675,11 @@ html, body, * {
 
 /* Match shell background to page — no visible edge */
 .app-shell {
-  background: #F7F2EA !important;
+  background: #FFFFFF !important;
 }
 
 .app-background {
-  background: #F7F2EA !important;
+  background: #FFFFFF !important;
 }
 
 /* Cards — shadows only, no borders */
@@ -708,7 +708,7 @@ section.dashboard-card,
 
 /* Remove all background contrast edges */
 html, body, #root, .app-background, .app-shell, .dashboard-shell {
-  background: #F7F2EA !important;
+  background: #FFFFFF !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
