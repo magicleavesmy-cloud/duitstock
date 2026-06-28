@@ -1052,12 +1052,12 @@ const productAddButtonStyle = {
 }
 
 const productListCardStyle = {
-  minHeight: '72px',
-  borderRadius: '16px',
+  minHeight: '52px',
+  borderRadius: '12px',
   border: '1px solid #ECE7DF',
   background: '#FFFFFF',
-  padding: '14px',
-  marginBottom: '4px',
+  padding: '8px 12px',
+  marginBottom: '3px',
   width: '100%',
   boxSizing: 'border-box',
   overflow: 'hidden',
@@ -1286,7 +1286,7 @@ function ProductCard({
     >
       <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h2 className="text-[14px] font-bold leading-tight text-[var(--text-main)]/95">
+          <h2 className="text-[12px] font-bold leading-tight text-[var(--text-main)]/95">
             {title}
           </h2>
           {canViewCosts ? (
@@ -2484,7 +2484,7 @@ function StockInHistoryPage({
             </colgroup>
             <thead>
               <tr
-                className="bg-zinc-50 uppercase"
+                className="table-header-row uppercase"
                 style={{ color: '#B09A85', fontSize: 9, fontWeight: 700 }}
               >
                 {['Date', 'Product', 'Qty', 'Amount', ''].map((label) => (
@@ -2825,7 +2825,7 @@ function StockInEntryBox({ date, products, onSave }) {
 
       <div className="overflow-visible rounded-[14px] ring-1 ring-zinc-200">
         <div>
-          <div className={`grid ${tableGridClass} gap-1 bg-zinc-50 px-1.5 py-1.5 text-[11px] font-bold uppercase leading-tight text-zinc-500 sm:px-2 sm:py-2`}>
+          <div className={`grid ${tableGridClass} gap-1 table-header-row px-1.5 py-1.5 text-[11px] font-bold uppercase leading-tight sm:px-2 sm:py-2`}>
             <span>Item</span>
             <span>In Stock</span>
             <span>Qty</span>

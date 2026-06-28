@@ -51,7 +51,7 @@ export default function StockEntriesTable({ entries }) {
         >
           <div className="w-full" style={{ background: 'transparent' }}>
             <div
-              className="sticky top-0 z-10 grid grid-cols-[30%_18%_12%_14%_26%] font-bold uppercase leading-[1.1]"
+              className="table-header-row sticky top-0 z-10 grid grid-cols-[30%_18%_12%_14%_26%] font-bold uppercase leading-[1.1]"
               style={{
                 background: '#F6F3EE',
                 color: '#71717A',

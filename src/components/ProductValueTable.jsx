@@ -234,7 +234,7 @@ function HeaderCell({ align = 'left', children, style = {} }) {
   return (
     <th
       style={{
-        background: '#F6F3EE',
+        background: 'transparent',
         color: '#71717A',
         fontSize: 9,
         fontWeight: 800,

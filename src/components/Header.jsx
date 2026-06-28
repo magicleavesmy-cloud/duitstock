@@ -30,7 +30,7 @@ export default function Header({
         </span>
         <SyncStatusPill status={syncStatus} text={syncStatusText} />
         <button
-          className="secondary-button h-7 rounded-full px-2 text-[10px]"
+          className="h-7 rounded-full px-2 text-[10px] font-bold border border-zinc-200 bg-white text-zinc-600"
           onClick={onLogout}
           type="button"
         >
