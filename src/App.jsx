@@ -1814,6 +1814,7 @@ function StockCheckRow({
   const isCheckedIndicatorActive = isSaved || isSaving
   const systemQty = Number(count.systemQty ?? getProductCurrentStock(product)) || 0
   const currentStockLabel = isSaved ? getProductCurrentStock(product) : systemQty
+  const currentStockValue = currentStockLabel * getProductUnitCost(product)
   const physicalQty = (Number(displayQty) || 0) + (Number(storeQty) || 0)
   const difference = physicalQty - systemQty
   const lastUpdatedLabel = formatProductUpdatedAt(stockCheckUpdatedAt)
@@ -1848,6 +1849,16 @@ function StockCheckRow({
               }}
             >
               {currentStockLabel}
+            </span>
+            {' | '}
+            <span
+              style={{
+                color: '#DC2626',
+                fontWeight: 900,
+                textShadow: '0 0 6px rgba(220, 38, 38, 0.42), 0 0 12px rgba(220, 38, 38, 0.24)',
+              }}
+            >
+              {formatStockValueRM(currentStockValue)}
             </span>
           </p>
           <p className={`product-updated ${updatedAtState}`}>
@@ -4209,6 +4220,18 @@ function getProductCurrentStock(product = {}) {
   return Number(stockValue) || 0
 }
 
+function getProductUnitCost(product = {}) {
+  const costValue = [
+    product.cost,
+    product.costPrice,
+    product.buyPrice,
+    product.purchasePrice,
+    product.price,
+  ].find((value) => value !== undefined && value !== null && value !== '')
+
+  return Number(costValue) || 0
+}
+
 function getProductLastUpdatedTime(product = {}) {
   const timestamp = [
     product.updatedAt,
@@ -4335,6 +4358,12 @@ function formatRM(value) {
 
 function formatNumber(value) {
   return new Intl.NumberFormat('en-MY').format(Number(value) || 0)
+}
+
+function formatStockValueRM(value) {
+  return `RM ${new Intl.NumberFormat('en-MY', {
+    maximumFractionDigits: 2,
+  }).format(Number(value) || 0)}`
 }
 
 function formatTime(value) {

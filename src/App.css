@@ -30,87 +30,41 @@
 }
 
 .stock-check-save-button {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 62px;
-  height: 32px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 94, 0, 0.78);
+  width: 100%;
+  height: 36px;
+  border: 0;
   border-radius: 999px;
-  background:
-    linear-gradient(180deg, rgba(255, 186, 78, 0.95) 0%, #ff9a00 34%, #ff7a00 58%, #ff5e00 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.58),
-    inset 0 -8px 12px rgba(188, 48, 0, 0.22),
-    inset 0 0 12px rgba(255, 154, 0, 0.38),
-    0 0 12px rgba(255, 94, 0, 0.54),
-    0 6px 12px rgba(255, 94, 0, 0.24);
-  color: #fff;
-  cursor: pointer;
-  font-size: 10px;
+  background: linear-gradient(135deg, #ff8a00 0%, #ff6a00 45%, #f97316 100%);
+  color: #ffffff;
+  font-size: 12px;
   font-weight: 900;
-  line-height: 1;
-  text-align: center;
-  text-shadow: 0 1px 1px rgba(120, 37, 0, 0.36);
-  transition:
-    transform 160ms ease,
-    box-shadow 160ms ease,
-    filter 160ms ease;
-}
-
-.stock-check-save-button::before {
-  content: "";
-  position: absolute;
-  inset: 2px 5px auto;
-  height: 10px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 196, 96, 0.18));
-  pointer-events: none;
+  box-shadow:
+    0 0 10px rgba(255, 122, 0, 0.75),
+    0 0 22px rgba(249, 115, 22, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
 
 .stock-check-save-button:hover:not(:disabled) {
-  transform: translateY(-2px);
+  filter: brightness(1.08);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.66),
-    inset 0 -8px 12px rgba(188, 48, 0, 0.18),
-    inset 0 0 14px rgba(255, 154, 0, 0.48),
-    0 0 18px rgba(255, 94, 0, 0.74),
-    0 8px 15px rgba(255, 94, 0, 0.32);
-  filter: brightness(1.08) saturate(1.14);
+    0 0 14px rgba(255, 122, 0, 0.95),
+    0 0 30px rgba(249, 115, 22, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
 .stock-check-save-button:active:not(:disabled) {
-  transform: translateY(1px) scale(0.97);
-  box-shadow:
-    inset 0 2px 6px rgba(128, 32, 0, 0.36),
-    inset 0 -5px 10px rgba(255, 154, 0, 0.18),
-    0 0 10px rgba(255, 94, 0, 0.46),
-    0 3px 7px rgba(255, 94, 0, 0.2);
+  transform: scale(0.97);
 }
 
 .stock-check-save-button:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
-  filter: saturate(0.78);
-  opacity: 0.58;
-  transform: none;
 }
 
 .stock-check-save-button.is-saved {
-  border-color: rgba(22, 163, 74, 0.78);
-  background:
-    linear-gradient(180deg, rgba(134, 255, 157, 0.92) 0%, #22c55e 34%, #16a34a 62%, #15803d 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.58),
-    inset 0 -8px 12px rgba(5, 96, 43, 0.24),
-    inset 0 0 12px rgba(34, 197, 94, 0.42),
-    0 0 12px rgba(34, 197, 94, 0.54),
-    0 6px 12px rgba(22, 163, 74, 0.24);
-  text-shadow: 0 1px 1px rgba(7, 62, 28, 0.36);
-}
-
-.stock-check-save-button.is-saved::before {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(134, 255, 157, 0.18));
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 45%, #ea580c 100%);
 }
 
 .product-card,
